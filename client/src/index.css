@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+  
+  body {
+    background-color: #0B0D10;
+    color: #F3F4F6;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* Custom sleek dark scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0B0D10;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #232931;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #323A46;
+  }
+}
+
+/* Custom card and surface utilities */
+.surface-card {
+  background-color: #15191E;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+}
+
+.surface-elevated {
+  background-color: #1B2026;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.surface-hover {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.surface-hover:hover {
+  background-color: #1A1F26;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Recharts container fix */
+.recharts-responsive-container {
+  width: 100% !important;
+}
+
+.recharts-default-tooltip {
+  background-color: #1B2026 !important;
+  border: 1px solid #2E3642 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
+}

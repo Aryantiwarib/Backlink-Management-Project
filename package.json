@@ -1,0 +1,27 @@
+{
+  "name": "linkora-seo-platform",
+  "version": "1.0.0",
+  "description": "LINKORA - Premium SEO & Backlink Management Automation Platform",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "npm run dev --prefix server",
+    "client": "npm run dev --prefix client",
+    "start": "npm run start --prefix server",
+    "build": "npm run build --prefix client",
+    "install:all": "npm install && npm install --prefix server && npm install --prefix client"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "keywords": [
+    "seo",
+    "backlinks",
+    "dashboard",
+    "saas",
+    "react",
+    "express"
+  ],
+  "author": "Linkora Team",
+  "license": "MIT"
+}
