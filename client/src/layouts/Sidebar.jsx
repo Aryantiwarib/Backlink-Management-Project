@@ -17,12 +17,16 @@ import {
   Sparkles,
   User,
   LogOut,
-  X
+  X,
+  Plus
 } from 'lucide-react';
 import { useDashboard } from '../context/DashboardContext';
+import { useAuth } from '../context/AuthContext';
+import { useWebsite } from '../context/WebsiteContext';
 
 export const Sidebar = () => {
   const location = useLocation();
+  const { user } = useAuth();
   const {
     sidebarCollapsed,
     setSidebarCollapsed,
@@ -31,20 +35,27 @@ export const Sidebar = () => {
     selectedWebsite,
     setSelectedWebsite
   } = useDashboard();
+  const { websites, activeWebsite, switchActiveWebsite } = useWebsite();
+
+  const userInitials = user?.name
+    ? user.name
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
+    : 'AM';
 
   const [domainDropdownOpen, setDomainDropdownOpen] = useState(false);
 
-  const websites = [
-    { id: 'growthlabs.io', label: 'growthlabs.io', tier: 'Enterprise Plan' },
-    { id: 'saasmetrics.co', label: 'saasmetrics.co', tier: 'Growth Plan' },
-    { id: 'fintechpulse.com', label: 'fintechpulse.com', tier: 'Pro Plan' }
-  ];
+  const currentDisplayDomain = activeWebsite ? activeWebsite.domain : selectedWebsite;
 
   const navGroups = [
     {
       group: 'OVERVIEW',
       items: [
-        { label: 'Dashboard', path: '/', icon: LayoutDashboard }
+        { label: 'Dashboard', path: '/', icon: LayoutDashboard },
+        { label: 'Websites', path: '/websites', icon: Globe, badge: websites.length ? `${websites.length}` : undefined }
       ]
     },
     {
@@ -142,7 +153,7 @@ export const Sidebar = () => {
                 </div>
                 <div className="truncate">
                   <div className="text-xs font-semibold text-text-primary truncate">
-                    {selectedWebsite}
+                    {currentDisplayDomain}
                   </div>
                   <div className="text-[10px] text-text-muted truncate">
                     Active Workspace
@@ -155,28 +166,55 @@ export const Sidebar = () => {
             {/* Dropdown Menu */}
             {domainDropdownOpen && (
               <div className="absolute left-3 right-3 top-16 mt-1 bg-[#15191E] border border-white/[0.1] rounded-xl shadow-elevated p-1.5 z-50 space-y-1">
-                {websites.map((w) => (
-                  <button
-                    key={w.id}
-                    onClick={() => {
-                      setSelectedWebsite(w.id);
-                      setDomainDropdownOpen(false);
-                    }}
-                    className={`w-full flex items-center justify-between p-2 rounded-lg text-left text-xs transition-colors ${
-                      selectedWebsite === w.id
-                        ? 'bg-emerald-500/10 text-emerald-400 font-semibold'
-                        : 'text-text-secondary hover:bg-white/[0.04] hover:text-text-primary'
-                    }`}
-                  >
-                    <div>
-                      <div className="font-mono text-xs">{w.label}</div>
-                      <div className="text-[10px] text-text-muted">{w.tier}</div>
-                    </div>
-                    {selectedWebsite === w.id && (
-                      <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    )}
-                  </button>
-                ))}
+                {websites.length > 0 ? (
+                  websites.map((w) => {
+                    const isSelected = (activeWebsite?.id === w.id || activeWebsite?._id === w.id) || currentDisplayDomain === w.domain;
+                    return (
+                      <button
+                        key={w.id || w._id}
+                        onClick={() => {
+                          switchActiveWebsite(w.id || w._id);
+                          setSelectedWebsite(w.domain);
+                          setDomainDropdownOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between p-2 rounded-lg text-left text-xs transition-colors ${
+                          isSelected
+                            ? 'bg-emerald-500/10 text-emerald-400 font-semibold'
+                            : 'text-text-secondary hover:bg-white/[0.04] hover:text-text-primary'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          <span
+                            className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                              w.verificationStatus === 'verified' ? 'bg-emerald-400' : 'bg-amber-400'
+                            }`}
+                            title={w.verificationStatus === 'verified' ? 'DNS Verified' : 'Verification Pending'}
+                          />
+                          <div className="truncate">
+                            <div className="font-mono text-xs truncate">{w.domain}</div>
+                            <div className="text-[10px] text-text-muted truncate">{w.name}</div>
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 ml-1" />
+                        )}
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="px-3 py-2 text-xs text-text-muted text-center">
+                    No websites added yet
+                  </div>
+                )}
+
+                <NavLink
+                  to="/websites"
+                  onClick={() => setDomainDropdownOpen(false)}
+                  className="w-full flex items-center justify-center gap-1.5 p-2 mt-1 rounded-lg text-xs font-semibold text-emerald-400 hover:bg-emerald-500/10 transition-colors border-t border-white/[0.04]"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Manage Websites</span>
+                </NavLink>
               </div>
             )}
           </div>
@@ -245,16 +283,24 @@ export const Sidebar = () => {
         <div className="p-3 border-t border-white/[0.06] bg-[#0E1115] flex-shrink-0">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5 overflow-hidden">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-xs font-bold text-black flex-shrink-0">
-                AM
-              </div>
+              {user?.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt={user.name}
+                  className="w-8 h-8 rounded-full object-cover ring-1 ring-emerald-500/30 flex-shrink-0"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-xs font-bold text-black flex-shrink-0">
+                  {userInitials}
+                </div>
+              )}
               {!sidebarCollapsed && (
                 <div className="truncate">
                   <div className="text-xs font-semibold text-text-primary truncate">
-                    Alex Morgan
+                    {user?.name || 'Alex Morgan'}
                   </div>
-                  <div className="text-[10px] text-text-muted truncate">
-                    alex@growthlabs.io
+                  <div className="text-[10px] text-text-muted font-mono truncate">
+                    {user?.email || 'alex@growthlabs.io'}
                   </div>
                 </div>
               )}

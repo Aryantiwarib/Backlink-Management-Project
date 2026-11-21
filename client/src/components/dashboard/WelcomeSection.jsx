@@ -1,16 +1,19 @@
 import React from 'react';
 import { Download, Plus, Sparkles, RefreshCw } from 'lucide-react';
 import { useDashboard } from '../../context/DashboardContext';
+import { useAuth } from '../../context/AuthContext';
 
 export const WelcomeSection = () => {
   const { openNewCampaignModal, handleExportReport, refreshAll, loadingOverview } = useDashboard();
+  const { user } = useAuth();
+  const firstName = user?.name?.split(' ')[0] || 'Alex';
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-white/[0.04]">
       <div>
         <div className="flex items-center gap-2">
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary">
-            Good afternoon, Alex
+            Good afternoon, {firstName}
           </h1>
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5 animate-pulse" />

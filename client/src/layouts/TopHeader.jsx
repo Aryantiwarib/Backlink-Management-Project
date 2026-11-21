@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Menu,
   Search,
@@ -13,12 +13,20 @@ import {
   HelpCircle,
   LogOut,
   ExternalLink,
-  Sparkles
+  Sparkles,
+  Plus
 } from 'lucide-react';
 import { useDashboard } from '../context/DashboardContext';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
+import { useWebsite } from '../context/WebsiteContext';
 
 export const TopHeader = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const { addToast } = useToast();
+  const { websites, activeWebsite, switchActiveWebsite } = useWebsite();
   const {
     sidebarCollapsed,
     setMobileSidebarOpen,
@@ -35,12 +43,7 @@ export const TopHeader = () => {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
 
-  // Websites list
-  const websites = [
-    { id: 'growthlabs.io', label: 'growthlabs.io', category: 'Production' },
-    { id: 'saasmetrics.co', label: 'saasmetrics.co', category: 'Staging' },
-    { id: 'fintechpulse.com', label: 'fintechpulse.com', category: 'Partner' }
-  ];
+  const currentDisplayDomain = activeWebsite ? activeWebsite.domain : selectedWebsite;
 
   // Date ranges
   const dateRanges = [
@@ -55,6 +58,8 @@ export const TopHeader = () => {
     switch (location.pathname) {
       case '/':
         return { section: 'Overview', page: 'Dashboard' };
+      case '/websites':
+        return { section: 'Workspace', page: 'Websites & Domains' };
       case '/backlinks':
         return { section: 'Link Building', page: 'Backlinks' };
       case '/link-acquisition':
@@ -76,6 +81,22 @@ export const TopHeader = () => {
 
   const breadcrumb = getBreadcrumb();
   const selectedDateLabel = dateRanges.find((r) => r.id === dateRange)?.label || 'Last 30 days';
+
+  const userInitials = user?.name
+    ? user.name
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
+    : 'AM';
+
+  const handleSignOut = async () => {
+    setProfileDropdownOpen(false);
+    await logout();
+    addToast('Signed out successfully.', 'info');
+    navigate('/login');
+  };
 
   return (
     <header className="sticky top-0 z-30 h-16 bg-[#0B0D10]/85 backdrop-blur-md border-b border-white/[0.06] px-4 sm:px-6 flex items-center justify-between">
@@ -113,33 +134,71 @@ export const TopHeader = () => {
           >
             <Globe className="w-3.5 h-3.5 text-emerald-400" />
             <span className="font-mono font-medium max-w-[90px] sm:max-w-none truncate">
-              {selectedWebsite}
+              {currentDisplayDomain}
             </span>
             <ChevronDown className="w-3 h-3 text-text-muted" />
           </button>
 
           {websiteDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-56 bg-[#15191E] border border-white/[0.1] rounded-xl shadow-elevated p-1.5 z-50">
-              <div className="px-2.5 py-1 text-[10px] uppercase font-bold text-text-muted tracking-wider">
-                Select Domain
+            <div className="absolute right-0 mt-2 w-60 bg-[#15191E] border border-white/[0.1] rounded-xl shadow-elevated p-1.5 z-50">
+              <div className="px-2.5 py-1 text-[10px] uppercase font-bold text-text-muted tracking-wider flex items-center justify-between">
+                <span>Select Domain</span>
+                <span className="text-emerald-400 font-mono text-[9px]">{websites.length} total</span>
               </div>
-              {websites.map((w) => (
-                <button
-                  key={w.id}
-                  onClick={() => {
-                    setSelectedWebsite(w.id);
-                    setWebsiteDropdownOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between p-2 rounded-lg text-xs transition-colors ${
-                    selectedWebsite === w.id
-                      ? 'bg-emerald-500/10 text-emerald-400 font-semibold'
-                      : 'text-text-secondary hover:bg-white/[0.04] hover:text-text-primary'
-                  }`}
-                >
-                  <div className="text-left font-mono">{w.label}</div>
-                  {selectedWebsite === w.id && <Check className="w-3.5 h-3.5 text-emerald-400" />}
-                </button>
-              ))}
+
+              <div className="max-h-56 overflow-y-auto space-y-0.5 my-1">
+                {websites.length > 0 ? (
+                  websites.map((w) => {
+                    const isSelected = (activeWebsite?.id === w.id || activeWebsite?._id === w.id) || currentDisplayDomain === w.domain;
+                    const isVerified = w.verificationStatus === 'verified';
+
+                    return (
+                      <button
+                        key={w.id || w._id}
+                        onClick={() => {
+                          switchActiveWebsite(w.id || w._id);
+                          setSelectedWebsite(w.domain);
+                          setWebsiteDropdownOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between p-2 rounded-lg text-xs transition-colors ${
+                          isSelected
+                            ? 'bg-emerald-500/10 text-emerald-400 font-semibold'
+                            : 'text-text-secondary hover:bg-white/[0.04] hover:text-text-primary'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 overflow-hidden text-left">
+                          <span
+                            className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                              isVerified ? 'bg-emerald-400' : 'bg-amber-400'
+                            }`}
+                            title={isVerified ? 'Verified Domain' : 'Pending Verification'}
+                          />
+                          <div className="truncate">
+                            <div className="font-mono text-xs truncate">{w.domain}</div>
+                            <div className="text-[10px] text-text-muted truncate">{w.name}</div>
+                          </div>
+                        </div>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 ml-1" />}
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="px-3 py-3 text-xs text-text-muted text-center">
+                    No websites added yet
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={() => {
+                  setWebsiteDropdownOpen(false);
+                  navigate('/websites');
+                }}
+                className="w-full flex items-center justify-center gap-1.5 p-2 mt-1 rounded-lg text-xs font-semibold text-emerald-400 hover:bg-emerald-500/10 transition-colors border-t border-white/[0.04]"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Manage Websites</span>
+              </button>
             </div>
           )}
         </div>
@@ -257,18 +316,40 @@ export const TopHeader = () => {
             }}
             className="flex items-center gap-2 p-1 pl-1.5 pr-2 rounded-xl bg-[#15191E] border border-white/[0.07] hover:border-white/[0.14] transition-colors"
           >
-            <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-300 flex items-center justify-center text-[10px] font-bold text-black">
-              AM
-            </div>
-            <span className="hidden sm:inline text-xs font-semibold text-text-primary">Alex</span>
+            {user?.avatar ? (
+              <img
+                src={user.avatar}
+                alt={user.name}
+                className="w-6 h-6 rounded-full object-cover ring-1 ring-emerald-500/30"
+              />
+            ) : (
+              <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-300 flex items-center justify-center text-[10px] font-bold text-black">
+                {userInitials}
+              </div>
+            )}
+            <span className="hidden sm:inline text-xs font-semibold text-text-primary">
+              {user?.name?.split(' ')[0] || 'Alex'}
+            </span>
             <ChevronDown className="w-3 h-3 text-text-muted" />
           </button>
 
           {profileDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-52 bg-[#15191E] border border-white/[0.1] rounded-2xl shadow-elevated p-2 z-50">
+            <div className="absolute right-0 mt-2 w-56 bg-[#15191E] border border-white/[0.1] rounded-2xl shadow-elevated p-2 z-50">
               <div className="px-3 py-2 border-b border-white/[0.06] mb-1">
-                <div className="text-xs font-bold text-text-primary">Alex Morgan</div>
-                <div className="text-[10px] text-text-muted font-mono">alex@growthlabs.io</div>
+                <div className="text-xs font-bold text-text-primary truncate">{user?.name || 'Alex Morgan'}</div>
+                <div className="text-[10px] text-text-muted font-mono truncate">{user?.email || 'alex@growthlabs.io'}</div>
+                <div className="mt-1 flex items-center gap-1.5">
+                  {user?.providers?.includes('google') && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                      Google
+                    </span>
+                  )}
+                  {user?.providers?.includes('local') && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      Email
+                    </span>
+                  )}
+                </div>
               </div>
               <button
                 onClick={() => setProfileDropdownOpen(false)}
@@ -286,8 +367,8 @@ export const TopHeader = () => {
               </button>
               <div className="my-1 border-t border-white/[0.06]" />
               <button
-                onClick={() => setProfileDropdownOpen(false)}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-rose-400 hover:bg-rose-500/10 transition-colors text-left"
+                onClick={handleSignOut}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-rose-400 hover:bg-rose-500/10 transition-colors text-left font-medium"
               >
                 <LogOut className="w-3.5 h-3.5" />
                 <span>Sign Out</span>
