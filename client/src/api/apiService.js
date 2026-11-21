@@ -1,5 +1,5 @@
 // Frontend API Service Layer with Graceful Host & Proxy Resolution
-import { API_BASE } from '../config/api';
+import { API_BASE, getAuthHeaders } from '../config/api';
 
 /**
  * Generic fetch wrapper with timeout and error handling
@@ -13,10 +13,7 @@ async function fetchJson(endpoint, options = {}) {
       ...options,
       credentials: 'include',
       signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(options.headers || {})
-      }
+      headers: getAuthHeaders(options.headers)
     });
 
     clearTimeout(timeoutId);

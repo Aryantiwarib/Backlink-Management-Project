@@ -1,14 +1,11 @@
 // Website Management API Service
-import { API_BASE } from '../config/api';
+import { API_BASE, getAuthHeaders } from '../config/api';
 
 async function websiteFetch(endpoint, options = {}) {
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {})
-    }
+    headers: getAuthHeaders(options.headers)
   });
 
   const data = await response.json().catch(() => ({}));

@@ -1,9 +1,10 @@
 import bcrypt from 'bcryptjs';
 import passport from 'passport';
 import User from '../models/User.js';
+import { createAuthToken } from '../utils/tokenHelper.js';
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
+const CLIENT_URL = (process.env.CLIENT_URL || 'http://localhost:5173').trim().replace(/\/+$/, '');
 
 /**
  * Register a new user with email & password
@@ -66,10 +67,14 @@ export const signup = async (req, res, next) => {
 
         req.login(existingUser, (loginErr) => {
           if (loginErr) return next(loginErr);
+          const token = createAuthToken(existingUser);
           return res.status(200).json({
             success: true,
             message: 'Password added to your existing Google account. Logged in successfully.',
-            data: existingUser.toSafeObject()
+            data: {
+              ...existingUser.toSafeObject(),
+              token
+            }
           });
         });
         return;
@@ -98,19 +103,26 @@ export const signup = async (req, res, next) => {
 
     // Automatically log in the user after successful registration
     req.login(newUser, (loginErr) => {
+      const token = createAuthToken(newUser);
       if (loginErr) {
         console.error('Auto-login error after signup:', loginErr);
         return res.status(201).json({
           success: true,
           message: 'Account created successfully. Please log in.',
-          data: newUser.toSafeObject()
+          data: {
+            ...newUser.toSafeObject(),
+            token
+          }
         });
       }
 
       return res.status(201).json({
         success: true,
         message: 'Account created and logged in successfully.',
-        data: newUser.toSafeObject()
+        data: {
+          ...newUser.toSafeObject(),
+          token
+        }
       });
     });
   } catch (error) {
@@ -148,10 +160,14 @@ export const login = (req, res, next) => {
       }
 
       const safeUser = user.toSafeObject ? user.toSafeObject() : user;
+      const token = createAuthToken(user);
       return res.status(200).json({
         success: true,
         message: 'Logged in successfully.',
-        data: safeUser
+        data: {
+          ...safeUser,
+          token
+        }
       });
     });
   })(req, res, next);
@@ -314,8 +330,11 @@ export const handleGoogleCallback = (req, res, next) => {
         return sendClientRedirect(res, `${CLIENT_URL}/login?error=session_error&message=Failed+to+establish+session`);
       }
 
-      // Successful Google Sign-In: Clean client redirect to frontend dashboard
-      return sendClientRedirect(res, `${CLIENT_URL}/?oauth=success`);
+      // Generate a signed bearer token for cross-origin reliability (Safari / Chrome third-party cookie restrictions)
+      const token = createAuthToken(user);
+
+      // Successful Google Sign-In: Clean client redirect to frontend dashboard with token
+      return sendClientRedirect(res, `${CLIENT_URL}/?oauth=success&token=${encodeURIComponent(token)}`);
     });
   })(req, res, next);
 };
@@ -325,7 +344,7 @@ export const handleGoogleCallback = (req, res, next) => {
  * GET /api/auth/me
  */
 export const getMe = (req, res) => {
-  if (!req.isAuthenticated || !req.isAuthenticated()) {
+  if (!req.user && (!req.isAuthenticated || !req.isAuthenticated())) {
     return res.status(401).json({
       success: false,
       message: 'Not authenticated.'
@@ -344,7 +363,7 @@ export const getMe = (req, res) => {
  * GET /api/auth/status
  */
 export const getStatus = (req, res) => {
-  const isAuth = req.isAuthenticated ? req.isAuthenticated() : false;
+  const isAuth = !!req.user || (req.isAuthenticated ? req.isAuthenticated() : false);
   const safeUser = isAuth && req.user ? (req.user.toSafeObject ? req.user.toSafeObject() : req.user) : null;
 
   return res.status(200).json({

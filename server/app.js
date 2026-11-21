@@ -16,18 +16,29 @@ import { ensureAuthenticated } from './middleware/authMiddleware.js';
 
 const app = express();
 
+// Trust reverse proxy (essential for Render, Heroku, Cloudflare, etc. to recognize HTTPS & set secure cookies)
+app.set('trust proxy', 1);
+
 // Configure allowed CORS origins
+const clientUrl = process.env.CLIENT_URL ? process.env.CLIENT_URL.trim().replace(/\/+$/, '') : null;
 const allowedOrigins = [
-  process.env.CLIENT_URL || 'http://localhost:5173',
+  ...(clientUrl ? [clientUrl] : []),
   'http://localhost:5173',
-  'http://127.0.0.1:5173'
+  'http://127.0.0.1:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000'
 ];
 
 app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) {
+      const cleanOrigin = origin.replace(/\/+$/, '');
+      if (allowedOrigins.includes(cleanOrigin)) {
+        return callback(null, true);
+      }
+      // Allow localhost on any port for flexible developer setups
+      if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(cleanOrigin)) {
         return callback(null, true);
       }
       return callback(null, true);
@@ -54,6 +65,7 @@ app.use(
     secret: process.env.SESSION_SECRET || 'linkora_development_session_secret_2026',
     resave: false,
     saveUninitialized: false,
+    proxy: true, // Enables proxy cookie forwarding on Render/Cloudflare
     store: mongoSessionStore,
     cookie: {
       httpOnly: true,

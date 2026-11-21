@@ -49,7 +49,7 @@ export const configurePassport = () => {
   // 2. Google OAuth 2.0 Strategy
   const googleClientId = process.env.GOOGLE_CLIENT_ID?.trim();
   const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
-  const googleCallbackUrl = process.env.GOOGLE_CALLBACK_URL?.trim() || 'http://localhost:5000/auth/google/callback';
+  const googleCallbackUrl = process.env.GOOGLE_CALLBACK_URL?.trim() || '/auth/google/callback';
 
   if (googleClientId && googleClientSecret) {
     passport.use(
@@ -58,6 +58,7 @@ export const configurePassport = () => {
           clientID: googleClientId,
           clientSecret: googleClientSecret,
           callbackURL: googleCallbackUrl,
+          proxy: true,
           passReqToCallback: true
         },
         async (req, accessToken, refreshToken, profile, done) => {

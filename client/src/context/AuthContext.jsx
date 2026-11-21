@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authService } from '../api/authService';
+import { setAuthToken } from '../config/api';
 
 const AuthContext = createContext(null);
 
@@ -27,13 +28,21 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    checkAuth();
+    // Check if Google OAuth redirect provided a token or oauth=success flag
+    if (typeof window !== 'undefined' && window.location.search) {
+      const searchParams = new URLSearchParams(window.location.search);
+      const token = searchParams.get('token');
+      if (token) {
+        setAuthToken(token);
+      }
 
-    // Clean up ?oauth=success and hash fragments from URL if present
-    if (typeof window !== 'undefined' && window.location.search.includes('oauth=success')) {
-      const cleanUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, cleanUrl);
+      if (searchParams.has('oauth') || token) {
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
     }
+
+    checkAuth();
   }, [checkAuth]);
 
   // Login handler
@@ -42,6 +51,9 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await authService.login({ email, password });
       if (res && res.data) {
+        if (res.data.token) {
+          setAuthToken(res.data.token);
+        }
         setUser(res.data);
         return { success: true, user: res.data };
       }
@@ -59,6 +71,9 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await authService.signup(userData);
       if (res && res.data) {
+        if (res.data.token) {
+          setAuthToken(res.data.token);
+        }
         setUser(res.data);
         return { success: true, user: res.data };
       }
@@ -77,6 +92,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       console.warn('Logout API error:', err);
     } finally {
+      setAuthToken(null);
       setUser(null);
     }
   };
