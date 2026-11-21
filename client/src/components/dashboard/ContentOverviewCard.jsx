@@ -1,29 +1,22 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, ArrowRight, Target, CheckCircle2, Clock, Eye, Edit3 } from 'lucide-react';
+import { FileText, ArrowRight, Target } from 'lucide-react';
 import { useDashboard } from '../../context/DashboardContext';
 
 export const ContentOverviewCard = () => {
   const navigate = useNavigate();
-  const { contentOverview } = useDashboard();
+  const { linkAttributesSummary } = useDashboard();
 
-  const planned = contentOverview?.planned || 12;
-  const inProgress = contentOverview?.inProgress || 8;
-  const inReview = contentOverview?.inReview || 5;
-  const published = contentOverview?.published || 34;
+  const totalIndexed = linkAttributesSummary?.total || 0;
 
-  const goal = contentOverview?.monthlyGoal || {
-    published: 18,
-    target: 30,
-    percentage: 60,
-    month: 'November 2026'
-  };
+  const target = 20;
+  const percentage = Math.min(Math.round((totalIndexed / target) * 100), 100);
 
   const statusMetrics = [
-    { label: 'Planned', count: planned, color: 'text-text-muted', bg: 'bg-white/5', border: 'border-white/10' },
-    { label: 'In Progress', count: inProgress, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
-    { label: 'In Review', count: inReview, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
-    { label: 'Published', count: published, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' }
+    { label: 'Indexed Links', count: totalIndexed, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
+    { label: 'Dofollow', count: linkAttributesSummary?.dofollowRatio ? `${linkAttributesSummary.dofollowRatio}%` : '0%', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
+    { label: 'Content Target', count: target, color: 'text-text-muted', bg: 'bg-white/5', border: 'border-white/10' },
+    { label: 'Progress', count: `${percentage}%`, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' }
   ];
 
   return (
@@ -33,10 +26,10 @@ export const ContentOverviewCard = () => {
         <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/[0.04]">
           <div className="flex items-center gap-2">
             <h2 className="text-base font-bold text-text-primary tracking-tight">
-              Content Overview
+              Link Building Pace
             </h2>
             <span className="p-1 rounded-md text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-semibold px-2 py-0.5">
-              Production
+              Milestone
             </span>
           </div>
           <FileText className="w-4 h-4 text-text-muted" />
@@ -47,10 +40,10 @@ export const ContentOverviewCard = () => {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-text-primary">
               <Target className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Monthly Target</span>
+              <span>Acquisition Target</span>
             </div>
             <span className="text-xs font-mono font-bold text-emerald-400">
-              {goal.percentage}%
+              {percentage}%
             </span>
           </div>
 
@@ -58,13 +51,13 @@ export const ContentOverviewCard = () => {
           <div className="w-full h-2.5 bg-white/[0.06] rounded-full overflow-hidden p-0.5 mb-2">
             <div
               className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-500 shadow-glow-brand"
-              style={{ width: `${goal.percentage}%` }}
+              style={{ width: `${percentage}%` }}
             />
           </div>
 
           <div className="flex items-center justify-between text-[11px] text-text-muted">
-            <span>{goal.published} of {goal.target} articles published</span>
-            <span>Target: 30 / mo</span>
+            <span>{totalIndexed} of {target} links acquired</span>
+            <span>Target: {target} links</span>
           </div>
         </div>
 
@@ -87,10 +80,10 @@ export const ContentOverviewCard = () => {
       {/* Action Button */}
       <div className="pt-2">
         <button
-          onClick={() => navigate('/content-planner')}
+          onClick={() => navigate('/seo-tools')}
           className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-xs font-semibold text-text-primary border border-white/[0.08] transition-all hover:border-white/[0.15]"
         >
-          <span>View Content Plan</span>
+          <span>Manage Backlinks</span>
           <ArrowRight className="w-3.5 h-3.5" />
         </button>
       </div>

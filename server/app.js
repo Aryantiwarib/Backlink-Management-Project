@@ -10,6 +10,8 @@ import authRoutes from './routes/authRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import campaignRoutes from './routes/campaignRoutes.js';
 import websiteRoutes from './routes/websiteRoutes.js';
+import seoRoutes from './routes/seoRoutes.js';
+import backlinkRoutes from './routes/backlinkRoutes.js';
 import { ensureAuthenticated } from './middleware/authMiddleware.js';
 
 const app = express();
@@ -90,10 +92,12 @@ app.get('/auth/google', (req, res, next) => {
   import('./controllers/authController.js').then(m => m.initiateGoogleAuth(req, res, next));
 });
 
-// Protected Dashboard, Campaign and Website API Routes
+// Protected Dashboard, Campaign, Website and SEO Provider API Routes
 app.use('/api/dashboard', ensureAuthenticated, dashboardRoutes);
 app.use('/api/campaigns', ensureAuthenticated, campaignRoutes);
 app.use('/api/websites', ensureAuthenticated, websiteRoutes);
+app.use('/api/seo', ensureAuthenticated, seoRoutes);
+app.use('/api/backlinks', ensureAuthenticated, backlinkRoutes);
 
 // 404 Handler for undefined API routes
 app.use('/api/*', (req, res) => {

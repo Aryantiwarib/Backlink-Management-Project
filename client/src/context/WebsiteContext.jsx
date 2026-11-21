@@ -11,7 +11,7 @@ export const WebsiteProvider = ({ children }) => {
 
   const [websites, setWebsites] = useState([]);
   const [activeWebsite, setActiveWebsite] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   // Fetch websites for logged in user
@@ -19,6 +19,7 @@ export const WebsiteProvider = ({ children }) => {
     if (!isAuthenticated) {
       setWebsites([]);
       setActiveWebsite(null);
+      setLoading(false);
       return;
     }
 

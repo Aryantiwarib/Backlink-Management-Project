@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Globe,
   Plus,
@@ -13,7 +14,8 @@ import {
   Filter,
   RefreshCw,
   AlertCircle,
-  HelpCircle
+  HelpCircle,
+  Wrench
 } from 'lucide-react';
 import { useWebsite } from '../context/WebsiteContext';
 import { WebsiteStatusBadge } from '../components/websites/WebsiteStatusBadge';
@@ -23,6 +25,7 @@ import { DnsVerificationModal } from '../components/websites/DnsVerificationModa
 import { DeleteWebsiteModal } from '../components/websites/DeleteWebsiteModal';
 
 export const WebsiteManagementPage = () => {
+  const navigate = useNavigate();
   const {
     websites,
     activeWebsite,
@@ -391,6 +394,17 @@ export const WebsiteManagementPage = () => {
                         <ShieldCheck className="w-4 h-4 text-emerald-400" />
                       </button>
                     )}
+
+                    <button
+                      onClick={() => {
+                        switchActiveWebsite(site.id || site._id);
+                        navigate('/seo-tools');
+                      }}
+                      className="p-1.5 rounded-lg text-text-muted hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                      title="View SEO Intelligence"
+                    >
+                      <Wrench className="w-4 h-4" />
+                    </button>
 
                     <button
                       onClick={() => handleOpenEdit(site)}

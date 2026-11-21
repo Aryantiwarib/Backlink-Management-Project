@@ -1,16 +1,5 @@
 // Website Management API Service
-
-const getApiBase = () => {
-  if (
-    typeof window !== 'undefined' &&
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-  ) {
-    return 'http://localhost:5002/api';
-  }
-  return '/api';
-};
-
-const API_BASE = getApiBase();
+import { API_BASE } from '../config/api';
 
 async function websiteFetch(endpoint, options = {}) {
   const response = await fetch(`${API_BASE}${endpoint}`, {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { GOOGLE_AUTH_URL } from '../config/api';
 import { Link2, Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
 
 const GoogleIcon = () => (
@@ -96,12 +97,7 @@ export const LoginPage = () => {
 
   const handleGoogleLogin = () => {
     setGoogleLoading(true);
-    const backendUrl =
-      typeof window !== 'undefined' &&
-      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-        ? 'http://localhost:5002/api/auth/google'
-        : '/api/auth/google';
-    window.location.href = backendUrl;
+    window.location.href = GOOGLE_AUTH_URL;
   };
 
   const handleFillDemo = () => {

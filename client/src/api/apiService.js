@@ -1,14 +1,5 @@
 // Frontend API Service Layer with Graceful Host & Proxy Resolution
-
-// In development when client runs on 5173, point directly to backend at port 5002, otherwise fallback to relative /api
-const getApiBase = () => {
-  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-    return 'http://localhost:5002/api';
-  }
-  return '/api';
-};
-
-const API_BASE = getApiBase();
+import { API_BASE } from '../config/api';
 
 /**
  * Generic fetch wrapper with timeout and error handling

@@ -33,7 +33,8 @@ export const Sidebar = () => {
     mobileSidebarOpen,
     setMobileSidebarOpen,
     selectedWebsite,
-    setSelectedWebsite
+    setSelectedWebsite,
+    linkAttributesSummary
   } = useDashboard();
   const { websites, activeWebsite, switchActiveWebsite } = useWebsite();
 
@@ -50,6 +51,8 @@ export const Sidebar = () => {
 
   const currentDisplayDomain = activeWebsite ? activeWebsite.domain : selectedWebsite;
 
+  const totalSavedBacklinks = linkAttributesSummary?.total;
+
   const navGroups = [
     {
       group: 'OVERVIEW',
@@ -61,7 +64,12 @@ export const Sidebar = () => {
     {
       group: 'LINK BUILDING',
       items: [
-        { label: 'Backlinks', path: '/backlinks', icon: Link2, badge: '24.8K' },
+        {
+          label: 'Backlinks',
+          path: '/backlinks',
+          icon: Link2,
+          badge: totalSavedBacklinks ? `${totalSavedBacklinks}` : undefined
+        },
         { label: 'Link Acquisition', path: '/link-acquisition', icon: Target },
         { label: 'Marketplace', path: '/marketplace', icon: ShoppingBag, badge: 'New' }
       ]
@@ -76,7 +84,7 @@ export const Sidebar = () => {
       group: 'ANALYTICS',
       items: [
         { label: 'Backlink Audit', path: '/backlink-audit', icon: ShieldCheck },
-        { label: 'SEO Tools', path: '/seo-tools', icon: Wrench }
+        { label: 'SEO Tools', path: '/seo-tools', icon: Wrench, badge: 'Live API' }
       ]
     },
     {
