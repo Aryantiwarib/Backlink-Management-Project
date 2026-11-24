@@ -1,6 +1,8 @@
 import './config/loadEnv.js';
 import app from './app.js';
 import { connectDB, disconnectDB } from './config/db.js';
+import { startMonitoringScheduler, stopMonitoringScheduler } from './services/monitoring/monitoringScheduler.js';
+import { emailQueueService } from './services/email/emailQueueService.js';
 // import 'dotenv/config';
 
 const PORT = parseInt(process.env.PORT, 10) || 5002;
@@ -9,6 +11,12 @@ const PORT = parseInt(process.env.PORT, 10) || 5002;
 const startServer = async () => {
   try {
     await connectDB();
+
+    // Start background backlink monitoring scheduler & email queue
+    if (process.env.NODE_ENV !== 'test') {
+      startMonitoringScheduler();
+      emailQueueService.startScheduler();
+    }
 
     const server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Linkora API Server running on http://localhost:${PORT}`);
@@ -63,6 +71,7 @@ const startServer = async () => {
 
     const shutdown = async (signal) => {
       console.log(`\n${signal} received: closing HTTP server and database...`);
+      stopMonitoringScheduler();
       server.close(async () => {
         for (const s of secondaryServers) {
           try {

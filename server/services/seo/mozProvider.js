@@ -1,7 +1,7 @@
 /**
  * Moz External SEO Data Provider
  *
- * Implements direct HTTP integration with the official Moz API v2 (URL Metrics).
+ * Implements direct HTTP integration with the official Moz API v2 (URL Metrics & Links).
  * Official Docs: https://moz.com/api/docs
  * Dashboard: https://moz.com/api/dashboard
  * Authentication Guide: https://moz.com/api/docs/guides/authentication
@@ -9,6 +9,38 @@
  * Attribution Notice: "Domain Authority" and "Page Authority" are trademarks of Moz, Inc.
  * Commercial applications displaying Moz metrics must provide proper Moz attribution.
  */
+
+/**
+ * Normalizes a target domain by stripping protocol, www, paths, queries, and fragments.
+ * @param {string} domain
+ * @returns {string} clean domain (e.g. "growthlabs.io")
+ */
+export function normalizeDomain(domain) {
+  if (!domain || typeof domain !== 'string') return '';
+  return domain
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//i, '')
+    .replace(/^www\./i, '')
+    .split('/')[0]
+    .split('?')[0]
+    .split('#')[0];
+}
+
+/**
+ * Extracts the clean root domain or hostname from a URL.
+ * @param {string} url
+ * @returns {string} hostname without www
+ */
+export function extractDomainFromUrl(url) {
+  if (!url || typeof url !== 'string') return '';
+  try {
+    const parsed = new URL(url.startsWith('http://') || url.startsWith('https://') ? url : `https://${url}`);
+    return parsed.hostname.replace(/^www\./, '').toLowerCase();
+  } catch (_) {
+    return url.split('/')[0].replace(/^www\./, '').toLowerCase();
+  }
+}
 
 export class MozProvider {
   constructor() {
@@ -107,9 +139,14 @@ export class MozProvider {
       throw err;
     }
 
+    const cleanDomain = normalizeDomain(domain);
+    if (!cleanDomain) {
+      throw new Error('A valid domain is required to fetch SEO metrics.');
+    }
+
     const endpoint = `${this.apiBase}/url_metrics`;
     const payload = {
-      targets: [domain]
+      targets: [cleanDomain]
     };
 
     const controller = new AbortController();
@@ -127,7 +164,7 @@ export class MozProvider {
       clearTimeout(timeoutId);
       if (fetchError.name === 'AbortError') {
         const timeoutError = new Error(
-          `Moz API request timed out after ${this.timeoutMs / 1000}s while querying ${domain}.`
+          `Moz API request timed out after ${this.timeoutMs / 1000}s while querying ${cleanDomain}.`
         );
         timeoutError.code = 'PROVIDER_TIMEOUT';
         timeoutError.status = 504;
@@ -162,8 +199,16 @@ export class MozProvider {
       }
 
       const rawText = await response.text().catch(() => '');
+      let parsedMessage = '';
+      try {
+        const parsed = JSON.parse(rawText);
+        parsedMessage = parsed.message || parsed.error || '';
+      } catch (_) {
+        parsedMessage = rawText;
+      }
+
       const genericErr = new Error(
-        `Moz API returned HTTP ${response.status}: ${rawText || response.statusText}`
+        `Moz API returned HTTP ${response.status}: ${parsedMessage || response.statusText}`
       );
       genericErr.code = 'PROVIDER_HTTP_ERROR';
       genericErr.status = response.status;
@@ -171,7 +216,7 @@ export class MozProvider {
     }
 
     const data = await response.json();
-    return this.normalizeUrlMetricsResponse(domain, data);
+    return this.normalizeUrlMetricsResponse(cleanDomain, data);
   }
 
   /**
@@ -191,10 +236,15 @@ export class MozProvider {
       throw err;
     }
 
+    const cleanDomain = normalizeDomain(domain);
+    if (!cleanDomain) {
+      throw new Error('A valid domain is required to fetch backlinks.');
+    }
+
     const endpoint = `${this.apiBase}/links`;
     const payload = {
-      target: domain,
-      target_scope: 'domain',
+      target: cleanDomain,
+      target_scope: 'root_domain',
       sort: 'source_page_authority',
       limit: Math.min(Math.max(1, limit), 50)
     };
@@ -218,56 +268,129 @@ export class MozProvider {
         timeoutError.status = 504;
         throw timeoutError;
       }
-      throw fetchError;
+      const netError = new Error(`Network failure communicating with Moz API links endpoint: ${fetchError.message}`);
+      netError.code = 'PROVIDER_NETWORK_ERROR';
+      netError.status = 502;
+      throw netError;
     } finally {
       clearTimeout(timeoutId);
     }
 
-    // Handle tier permissions gracefully: If account does not have /v2/links endpoint rights
-    if (response.status === 403 || response.status === 401 || response.status === 404) {
-      console.warn(`[MozProvider] Moz /v2/links returned HTTP ${response.status}. Free tier may restrict row-level links.`);
-      return [];
-    }
-
     if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        const authErr = new Error(
+          'Moz API authentication failed. Please verify MOZ_API_TOKEN in server/.env.'
+        );
+        authErr.code = 'PROVIDER_AUTH_FAILED';
+        authErr.status = response.status;
+        throw authErr;
+      }
+
       if (response.status === 429) {
-        const rateErr = new Error('Moz API rate limit reached.');
+        const rateErr = new Error(
+          'Moz API rate limit or monthly quota exceeded (Free tier allows 1 request per 10s). Please wait before trying again.'
+        );
         rateErr.code = 'PROVIDER_RATE_LIMIT';
         rateErr.status = 429;
         throw rateErr;
       }
-      return [];
+
+      const rawText = await response.text().catch(() => '');
+      let parsedMessage = '';
+      try {
+        const parsed = JSON.parse(rawText);
+        parsedMessage = parsed.message || parsed.error || '';
+      } catch (_) {
+        parsedMessage = rawText;
+      }
+
+      const genericErr = new Error(
+        `Moz API links request failed (HTTP ${response.status}): ${parsedMessage || response.statusText}`
+      );
+      genericErr.code = 'PROVIDER_HTTP_ERROR';
+      genericErr.status = response.status;
+      throw genericErr;
     }
 
     const data = await response.json();
-    return this.normalizeLinksResponse(domain, data);
+    return this.normalizeLinksResponse(cleanDomain, data);
   }
 
   /**
    * Normalize Moz Links API v2 response
+   * Safely maps nested Moz v2 structure into Linkora canonical schema
    */
   normalizeLinksResponse(domain, rawResponse) {
     if (!rawResponse || !Array.isArray(rawResponse.results)) {
       return [];
     }
 
+    const cleanDomain = normalizeDomain(domain);
+
     return rawResponse.results
       .map((item) => {
-        const sourceUrl = item.source_url || '';
-        const targetUrl = item.target_url || `https://${domain}`;
+        if (!item || typeof item !== 'object') return null;
+
+        // 1. Resolve source and target pages from nested Moz v2 structure
+        const rawSource = item.source?.page || item.source?.subdomain || item.source?.root_domain || item.source_url || '';
+        const rawTarget = item.target?.page || item.target?.subdomain || item.target?.root_domain || item.target_url || cleanDomain;
+
+        if (!rawSource) return null;
+
+        const sourceUrl = (rawSource.startsWith('http://') || rawSource.startsWith('https://'))
+          ? rawSource
+          : `https://${rawSource}`;
+
+        const targetUrl = (rawTarget.startsWith('http://') || rawTarget.startsWith('https://'))
+          ? rawTarget
+          : `https://${rawTarget}`;
+
+        const sourceDomain = (item.source?.root_domain || item.source?.subdomain || extractDomainFromUrl(sourceUrl)).toLowerCase();
+
+        // 2. Anchor text
         const anchorText = typeof item.anchor_text === 'string' ? item.anchor_text.trim() : '';
-        const linkType = item.flag_nofollow ? 'nofollow' : 'dofollow';
-        const sourceDomainAuthority = typeof item.source_domain_authority === 'number'
-          ? Math.round(item.source_domain_authority)
-          : null;
-        const sourcePageAuthority = typeof item.source_page_authority === 'number'
-          ? Math.round(item.source_page_authority)
-          : null;
-        const firstSeen = item.first_seen ? new Date(item.first_seen) : null;
-        const lastSeen = item.last_seen ? new Date(item.last_seen) : null;
+
+        // 3. Link type: item.nofollow ? 'nofollow' : 'dofollow'
+        let linkType = 'unknown';
+        if (typeof item.nofollow === 'boolean') {
+          linkType = item.nofollow ? 'nofollow' : 'dofollow';
+        } else if (typeof item.flag_nofollow === 'boolean') {
+          linkType = item.flag_nofollow ? 'nofollow' : 'dofollow';
+        }
+
+        // 4. Source authorities
+        const sourceDomainAuthority =
+          typeof item.source?.domain_authority === 'number' && item.source.domain_authority >= 0
+            ? Math.round(item.source.domain_authority)
+            : typeof item.source_domain_authority === 'number' && item.source_domain_authority >= 0
+            ? Math.round(item.source_domain_authority)
+            : null;
+
+        const sourcePageAuthority =
+          typeof item.source?.page_authority === 'number' && item.source.page_authority >= 0
+            ? Math.round(item.source.page_authority)
+            : typeof item.source_page_authority === 'number' && item.source_page_authority >= 0
+            ? Math.round(item.source_page_authority)
+            : null;
+
+        // 5. Timestamps: date_first_seen and date_last_seen
+        let firstSeen = null;
+        const rawFirstSeen = item.date_first_seen || item.first_seen;
+        if (rawFirstSeen) {
+          const d = new Date(rawFirstSeen);
+          if (!isNaN(d.getTime())) firstSeen = d;
+        }
+
+        let lastSeen = null;
+        const rawLastSeen = item.date_last_seen || item.last_seen;
+        if (rawLastSeen) {
+          const d = new Date(rawLastSeen);
+          if (!isNaN(d.getTime())) lastSeen = d;
+        }
 
         return {
           sourceUrl,
+          sourceDomain,
           targetUrl,
           anchorText,
           linkType,
@@ -277,12 +400,17 @@ export class MozProvider {
           lastSeen,
           provider: this.id,
           meta: {
-            flagRedirect: !!item.flag_redirect,
-            sourceTitle: item.source_title || ''
+            flagRedirect: !!(item.redirect ?? item.flag_redirect),
+            relCanonical: !!item.rel_canonical,
+            sourceTitle: item.source?.title || item.source_title || '',
+            spamScore: typeof item.source?.spam_score === 'number' && item.source.spam_score >= 0
+              ? Math.round(item.source.spam_score)
+              : null,
+            dateDisappeared: item.date_disappeared || null
           }
         };
       })
-      .filter((b) => b.sourceUrl && b.targetUrl);
+      .filter((b) => b && b.sourceUrl && b.targetUrl);
   }
 
   /**

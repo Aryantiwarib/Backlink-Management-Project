@@ -1,96 +1,376 @@
-import { addActivity } from '../data/mockActivity.js';
+import mongoose from 'mongoose';
+import Website from '../models/Website.js';
+import { campaignService } from '../services/campaignService.js';
 
-let mockCampaigns = [
-  {
-    id: 'cmp-001',
-    name: 'Q4 SaaS Authority',
-    targetWebsite: 'growthlabs.io',
-    campaignType: 'Guest Posting',
-    status: 'In Progress',
-    targetLinks: 50,
-    acquiredLinks: 28,
-    createdAt: '2026-11-19T10:00:00Z'
-  },
-  {
-    id: 'cmp-002',
-    name: 'Broken Link Reclamation - Tech Blogs',
-    targetWebsite: 'growthlabs.io',
-    campaignType: 'Broken Link',
-    status: 'Active',
-    targetLinks: 25,
-    acquiredLinks: 14,
-    createdAt: '2026-11-10T08:30:00Z'
+/**
+ * Validate that websiteId is valid and belongs to the authenticated user
+ */
+async function validateWebsite(websiteId, userId) {
+  if (!websiteId || !mongoose.Types.ObjectId.isValid(websiteId)) {
+    const err = new Error('Invalid website ID format.');
+    err.status = 400;
+    throw err;
   }
-];
 
-export const createCampaign = (req, res) => {
+  const website = await Website.findOne({ _id: websiteId, userId });
+  if (!website) {
+    const err = new Error('Website not found or does not belong to the authenticated user.');
+    err.status = 404;
+    throw err;
+  }
+  return website;
+}
+
+/**
+ * POST /api/campaigns/:websiteId
+ * Create a new campaign
+ */
+export async function createCampaign(req, res, next) {
   try {
-    const { name, targetWebsite, campaignType, targetLinks = 20, notes } = req.body;
+    const userId = req.user._id;
+    const { websiteId } = req.params;
 
-    if (!name || !name.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Campaign name is required.'
-      });
-    }
+    await validateWebsite(websiteId, userId);
 
-    if (!targetWebsite) {
-      return res.status(400).json({
-        success: false,
-        message: 'Target website is required.'
-      });
-    }
-
-    if (!campaignType) {
-      return res.status(400).json({
-        success: false,
-        message: 'Campaign type is required.'
-      });
-    }
-
-    const newCampaign = {
-      id: `cmp-${Date.now()}`,
-      name: name.trim(),
-      targetWebsite,
-      campaignType,
-      targetLinks: Number(targetLinks) || 20,
-      acquiredLinks: 0,
-      notes: notes || '',
-      status: 'Active',
-      createdAt: new Date().toISOString()
-    };
-
-    mockCampaigns.unshift(newCampaign);
-
-    // Also register an activity event in the timeline
-    addActivity({
-      id: `act-${Date.now()}`,
-      type: 'campaign_created',
-      iconType: 'Rocket',
-      title: `Campaign created: ${newCampaign.name}`,
-      description: `Targeting ${newCampaign.targetWebsite} with ${newCampaign.campaignType} strategy (${newCampaign.targetLinks} links goal)`,
-      timestamp: 'Just now',
-      severity: 'info',
-      link: '/link-acquisition'
+    const campaign = await campaignService.createCampaign({
+      userId,
+      websiteId,
+      campaignData: req.body
     });
 
     return res.status(201).json({
       success: true,
-      message: 'Campaign created successfully',
-      data: newCampaign
+      message: 'Campaign created successfully.',
+      campaign
     });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to create campaign',
-      error: error.message
-    });
+  } catch (err) {
+    next(err);
   }
-};
+}
 
-export const getCampaigns = (req, res) => {
-  return res.status(200).json({
-    success: true,
-    data: mockCampaigns
-  });
-};
+/**
+ * GET /api/campaigns/:websiteId
+ * List campaigns for website with search, filter and pagination
+ */
+export async function getCampaigns(req, res, next) {
+  try {
+    const userId = req.user._id;
+    const { websiteId } = req.params;
+    const { page, limit, search, status, campaignType, sortBy, sortOrder } = req.query;
+
+    await validateWebsite(websiteId, userId);
+
+    const result = await campaignService.getCampaigns({
+      userId,
+      websiteId,
+      page,
+      limit,
+      search,
+      status,
+      campaignType,
+      sortBy,
+      sortOrder
+    });
+
+    return res.status(200).json({
+      success: true,
+      ...result
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * GET /api/campaigns/:websiteId/stats
+ * Aggregate dashboard stats for campaigns of website
+ */
+export async function getCampaignStats(req, res, next) {
+  try {
+    const userId = req.user._id;
+    const { websiteId } = req.params;
+
+    await validateWebsite(websiteId, userId);
+
+    const stats = await campaignService.getCampaignStats({ userId, websiteId });
+
+    return res.status(200).json({
+      success: true,
+      stats
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * GET /api/campaigns/:websiteId/:campaignId
+ * Fetch single campaign details with status breakdown
+ */
+export async function getCampaignById(req, res, next) {
+  try {
+    const userId = req.user._id;
+    const { websiteId, campaignId } = req.params;
+
+    await validateWebsite(websiteId, userId);
+
+    const campaign = await campaignService.getCampaignById({
+      userId,
+      websiteId,
+      campaignId
+    });
+
+    return res.status(200).json({
+      success: true,
+      campaign
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * PATCH /api/campaigns/:websiteId/:campaignId
+ * Update campaign details
+ */
+export async function updateCampaign(req, res, next) {
+  try {
+    const userId = req.user._id;
+    const { websiteId, campaignId } = req.params;
+
+    await validateWebsite(websiteId, userId);
+
+    const campaign = await campaignService.updateCampaign({
+      userId,
+      websiteId,
+      campaignId,
+      updateData: req.body
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Campaign updated successfully.',
+      campaign
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * PATCH /api/campaigns/:websiteId/:campaignId/status
+ * Transition campaign lifecycle status
+ */
+export async function updateCampaignStatus(req, res, next) {
+  try {
+    const userId = req.user._id;
+    const { websiteId, campaignId } = req.params;
+    const { status } = req.body;
+
+    await validateWebsite(websiteId, userId);
+
+    const campaign = await campaignService.updateCampaignStatus({
+      userId,
+      websiteId,
+      campaignId,
+      status
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `Campaign status updated to ${status}.`,
+      campaign
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * DELETE /api/campaigns/:websiteId/:campaignId
+ * Delete campaign and associated assignments
+ */
+export async function deleteCampaign(req, res, next) {
+  try {
+    const userId = req.user._id;
+    const { websiteId, campaignId } = req.params;
+
+    await validateWebsite(websiteId, userId);
+
+    const result = await campaignService.deleteCampaign({
+      userId,
+      websiteId,
+      campaignId
+    });
+
+    return res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/campaigns/:websiteId/:campaignId/prospects
+ * Assign Phase 9 prospects to campaign
+ */
+export async function assignProspects(req, res, next) {
+  try {
+    const userId = req.user._id;
+    const { websiteId, campaignId } = req.params;
+    const { prospectIds, notes } = req.body;
+
+    await validateWebsite(websiteId, userId);
+
+    const result = await campaignService.assignProspects({
+      userId,
+      websiteId,
+      campaignId,
+      prospectIds,
+      notes
+    });
+
+    return res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * GET /api/campaigns/:websiteId/:campaignId/prospects
+ * List assigned prospects with outreach status and metrics
+ */
+export async function getCampaignProspects(req, res, next) {
+  try {
+    const userId = req.user._id;
+    const { websiteId, campaignId } = req.params;
+    const { page, limit, search, outreachStatus, sortBy, sortOrder } = req.query;
+
+    await validateWebsite(websiteId, userId);
+
+    const result = await campaignService.getCampaignProspects({
+      userId,
+      websiteId,
+      campaignId,
+      page,
+      limit,
+      search,
+      outreachStatus,
+      sortBy,
+      sortOrder
+    });
+
+    return res.status(200).json({
+      success: true,
+      ...result
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * PATCH /api/campaigns/:websiteId/:campaignId/prospects/:assignmentId
+ * Update outreach status or notes for an assigned prospect
+ */
+export async function updateAssignment(req, res, next) {
+  try {
+    const userId = req.user._id;
+    const { websiteId, campaignId, assignmentId } = req.params;
+
+    await validateWebsite(websiteId, userId);
+
+    const assignment = await campaignService.updateAssignment({
+      userId,
+      websiteId,
+      campaignId,
+      assignmentId,
+      updateData: req.body
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Prospect assignment updated.',
+      assignment
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * DELETE /api/campaigns/:websiteId/:campaignId/prospects/:assignmentId
+ * Remove prospect from campaign without deleting original Phase 9 prospect
+ */
+export async function removeAssignment(req, res, next) {
+  try {
+    const userId = req.user._id;
+    const { websiteId, campaignId, assignmentId } = req.params;
+
+    await validateWebsite(websiteId, userId);
+
+    const result = await campaignService.removeAssignment({
+      userId,
+      websiteId,
+      campaignId,
+      assignmentId
+    });
+
+    return res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/campaigns/:websiteId/:campaignId/prospects/bulk-status
+ * Bulk update outreach status for multiple assigned prospects
+ */
+export async function bulkUpdateAssignmentsStatus(req, res, next) {
+  try {
+    const userId = req.user._id;
+    const { websiteId, campaignId } = req.params;
+    const { assignmentIds, outreachStatus } = req.body;
+
+    await validateWebsite(websiteId, userId);
+
+    const result = await campaignService.bulkUpdateAssignmentsStatus({
+      userId,
+      websiteId,
+      campaignId,
+      assignmentIds,
+      outreachStatus
+    });
+
+    return res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * GET /api/campaigns/:websiteId/:campaignId/activities
+ * Retrieve chronological activity timeline
+ */
+export async function getCampaignActivities(req, res, next) {
+  try {
+    const userId = req.user._id;
+    const { websiteId, campaignId } = req.params;
+    const { limit } = req.query;
+
+    await validateWebsite(websiteId, userId);
+
+    const activities = await campaignService.getCampaignActivities({
+      userId,
+      websiteId,
+      campaignId,
+      limit
+    });
+
+    return res.status(200).json({
+      success: true,
+      activities
+    });
+  } catch (err) {
+    next(err);
+  }
+}

@@ -147,12 +147,12 @@ export class BacklinkStorageService {
           sourcePageAuthority: item.sourcePageAuthority ?? null,
           lastSeen: item.lastSeen || new Date(),
           fetchedAt: new Date(),
+          status: 'active',
           provider: (item.provider || provider || 'moz').toLowerCase(),
           meta: item.meta || {}
         },
         $setOnInsert: {
-          firstSeen: item.firstSeen || new Date(),
-          status: 'active'
+          firstSeen: item.firstSeen || new Date()
         }
       };
 

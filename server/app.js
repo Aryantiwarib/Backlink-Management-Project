@@ -12,6 +12,9 @@ import campaignRoutes from './routes/campaignRoutes.js';
 import websiteRoutes from './routes/websiteRoutes.js';
 import seoRoutes from './routes/seoRoutes.js';
 import backlinkRoutes from './routes/backlinkRoutes.js';
+import monitoringRoutes from './routes/monitoringRoutes.js';
+import prospectRoutes from './routes/prospectRoutes.js';
+import outreachRoutes from './routes/outreachRoutes.js';
 import { ensureAuthenticated } from './middleware/authMiddleware.js';
 
 const app = express();
@@ -110,6 +113,9 @@ app.use('/api/campaigns', ensureAuthenticated, campaignRoutes);
 app.use('/api/websites', ensureAuthenticated, websiteRoutes);
 app.use('/api/seo', ensureAuthenticated, seoRoutes);
 app.use('/api/backlinks', ensureAuthenticated, backlinkRoutes);
+app.use('/api/monitoring', ensureAuthenticated, monitoringRoutes);
+app.use('/api/prospects', ensureAuthenticated, prospectRoutes);
+app.use('/api/outreach', outreachRoutes);
 
 // 404 Handler for undefined API routes
 app.use('/api/*', (req, res) => {

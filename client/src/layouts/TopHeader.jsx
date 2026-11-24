@@ -20,6 +20,7 @@ import { useDashboard } from '../context/DashboardContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useWebsite } from '../context/WebsiteContext';
+import { monitoringApi } from '../api/monitoringService';
 
 export const TopHeader = () => {
   const location = useLocation();
@@ -42,6 +43,35 @@ export const TopHeader = () => {
   const [dateDropdownOpen, setDateDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [monitoringAlerts, setMonitoringAlerts] = useState([]);
+  const [unreadAlertsCount, setUnreadAlertsCount] = useState(0);
+
+  // Fetch unread monitoring alerts for notification bell
+  const fetchAlerts = React.useCallback(async () => {
+    try {
+      const data = await monitoringApi.getUnreadAlerts(8);
+      setMonitoringAlerts(data.alerts || []);
+      setUnreadAlertsCount(data.totalUnread || 0);
+    } catch (_) {
+      // Quiet fail if offline/unauthed
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchAlerts();
+    const interval = setInterval(fetchAlerts, 60000); // 1 min poll
+    return () => clearInterval(interval);
+  }, [fetchAlerts]);
+
+  const handleAlertClick = async (alertItem) => {
+    try {
+      await monitoringApi.markEventRead(alertItem.id);
+      setMonitoringAlerts((prev) => prev.filter((a) => a.id !== alertItem.id));
+      setUnreadAlertsCount((c) => Math.max(0, c - 1));
+    } catch (_) {}
+    setNotificationsOpen(false);
+    navigate('/monitoring');
+  };
 
   const currentDisplayDomain = activeWebsite ? activeWebsite.domain : selectedWebsite;
 
@@ -63,13 +93,17 @@ export const TopHeader = () => {
       case '/backlinks':
         return { section: 'Link Building', page: 'Backlinks' };
       case '/link-acquisition':
-        return { section: 'Link Building', page: 'Link Acquisition' };
+        return { section: 'Link Building', page: 'Link Prospecting' };
+      case '/prospecting':
+        return { section: 'Link Building', page: 'Link Prospecting' };
       case '/marketplace':
         return { section: 'Link Building', page: 'Marketplace' };
       case '/content-planner':
         return { section: 'Content', page: 'Content Planner' };
+      case '/monitoring':
+        return { section: 'Analytics', page: 'Backlink Monitoring' };
       case '/backlink-audit':
-        return { section: 'Analytics', page: 'Backlink Audit' };
+        return { section: 'Analytics', page: 'Backlink Monitoring' };
       case '/seo-tools':
         return { section: 'Analytics', page: 'SEO Tools' };
       case '/settings':
@@ -263,12 +297,13 @@ export const TopHeader = () => {
               setWebsiteDropdownOpen(false);
               setDateDropdownOpen(false);
               setProfileDropdownOpen(false);
+              if (!notificationsOpen) fetchAlerts();
             }}
             className="relative p-2 rounded-xl bg-[#15191E] border border-white/[0.07] hover:border-white/[0.14] text-text-secondary hover:text-text-primary transition-colors"
             title="Notifications"
           >
             <Bell className="w-4 h-4" />
-            {alerts && alerts.length > 0 && (
+            {unreadAlertsCount > 0 && (
               <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-[#15191E]" />
             )}
           </button>
@@ -276,29 +311,60 @@ export const TopHeader = () => {
           {notificationsOpen && (
             <div className="absolute right-0 mt-2 w-80 bg-[#15191E] border border-white/[0.1] rounded-2xl shadow-elevated p-3 z-50">
               <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/[0.06]">
-                <span className="text-xs font-bold text-text-primary">Notifications</span>
+                <span className="text-xs font-bold text-text-primary">Backlink Alerts</span>
                 <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                  {alerts?.length || 0} New
+                  {unreadAlertsCount} Unread
                 </span>
               </div>
               <div className="space-y-2 max-h-60 overflow-y-auto">
-                {alerts?.map((a) => (
-                  <div
-                    key={a.id}
-                    className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04] text-xs hover:border-white/[0.1] transition-colors cursor-pointer"
-                    onClick={() => setNotificationsOpen(false)}
-                  >
-                    <div className="font-semibold text-text-primary line-clamp-1">{a.title}</div>
-                    <div className="text-[11px] text-text-muted line-clamp-2 mt-0.5">{a.description}</div>
+                {monitoringAlerts.length === 0 ? (
+                  <div className="py-6 text-center text-xs text-text-muted">
+                    No unread backlink alerts
                   </div>
-                ))}
+                ) : (
+                  monitoringAlerts.map((a) => (
+                    <div
+                      key={a.id}
+                      className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04] text-xs hover:border-white/[0.1] transition-colors cursor-pointer"
+                      onClick={() => handleAlertClick(a)}
+                    >
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase ${
+                            a.eventType === 'new_backlink'
+                              ? 'bg-emerald-500/10 text-emerald-400'
+                              : a.eventType === 'lost_backlink'
+                              ? 'bg-rose-500/10 text-rose-400'
+                              : 'bg-amber-500/10 text-amber-400'
+                          }`}
+                        >
+                          {a.eventType.replace('_', ' ')}
+                        </span>
+                        {a.website?.domain && (
+                          <span className="text-[10px] text-text-muted truncate max-w-[100px]">
+                            {a.website.domain}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-text-secondary truncate font-medium">
+                        {a.sourceDomain || a.sourceUrl}
+                      </div>
+                      <div className="text-[10px] text-text-muted mt-0.5 truncate">
+                        {a.anchorText ? `"${a.anchorText}"` : a.targetUrl}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
               <div className="pt-2 mt-2 border-t border-white/[0.06] text-center">
                 <button
-                  onClick={() => setNotificationsOpen(false)}
+                  onClick={() => {
+                    setNotificationsOpen(false);
+                    navigate('/monitoring');
+                  }}
                   className="text-[11px] font-medium text-emerald-400 hover:underline"
                 >
-                  Mark all as read
+                  View All Monitoring Alerts →
                 </button>
               </div>
             </div>

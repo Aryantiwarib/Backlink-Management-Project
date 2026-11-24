@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { useWebsite } from '../context/WebsiteContext';
 import { useToast } from '../context/ToastContext';
 import { backlinkService } from '../api/backlinkService';
+import { seoService } from '../api/seoService';
 import { BacklinkSummaryCards } from '../components/backlinks/BacklinkSummaryCards';
 import { BacklinkFilterBar } from '../components/backlinks/BacklinkFilterBar';
 import { BacklinkTable } from '../components/backlinks/BacklinkTable';
@@ -50,6 +51,7 @@ export const BacklinkExplorerPage = () => {
   // Loading & Error States
   const [loading, setLoading] = useState(true);
   const [loadingStats, setLoadingStats] = useState(true);
+  const [syncingMoz, setSyncingMoz] = useState(false);
   const [error, setError] = useState(null);
 
   // Detail Modal State
@@ -212,6 +214,38 @@ export const BacklinkExplorerPage = () => {
     }
   };
 
+  // Live Moz Synchronization Handler
+  const handleSyncMozData = async () => {
+    if (!activeWebsite?._id && !activeWebsite?.id) {
+      addToast('Please select a website before syncing Moz data.', 'warning');
+      return;
+    }
+
+    try {
+      setSyncingMoz(true);
+      const siteId = activeWebsite._id || activeWebsite.id;
+      const res = await seoService.syncSeoData({
+        websiteId: siteId,
+        domain: activeWebsite.domain
+      });
+
+      const savedCount = res.backlinksSaved ?? res.storage?.backlinksSaved ?? 0;
+
+      addToast(
+        res.message || `Successfully synchronized ${savedCount} backlink${savedCount === 1 ? '' : 's'} from Moz into database.`,
+        'success'
+      );
+
+      // Refresh both backlink records and summary stats
+      await Promise.all([fetchBacklinks(), fetchStats()]);
+    } catch (err) {
+      console.error('Failed to sync Moz data:', err);
+      addToast(err.message || 'Failed to sync backlink data from Moz API.', 'error');
+    } finally {
+      setSyncingMoz(false);
+    }
+  };
+
   // 1. Loading Websites State
   if (loadingWebsites) {
     return (
@@ -294,12 +328,13 @@ export const BacklinkExplorerPage = () => {
           </button>
 
           <button
-            onClick={() => navigate('/seo-tools')}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-semibold transition-all shadow-glow-brand"
-            title="Sync live backlink metrics from Moz API"
+            onClick={handleSyncMozData}
+            disabled={syncingMoz || loading}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-semibold transition-all shadow-glow-brand disabled:opacity-50"
+            title="Fetch and persist live backlinks from Moz API"
           >
-            <Wrench className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>Sync Moz Data</span>
+            <RefreshCw className={`w-3.5 h-3.5 stroke-[2.5] ${syncingMoz ? 'animate-spin' : ''}`} />
+            <span>{syncingMoz ? 'Syncing Moz...' : 'Sync Moz Data'}</span>
           </button>
         </div>
       </div>

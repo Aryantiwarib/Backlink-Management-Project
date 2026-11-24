@@ -18,7 +18,9 @@ import {
   User,
   LogOut,
   X,
-  Plus
+  Plus,
+  Rocket,
+  Mail
 } from 'lucide-react';
 import { useDashboard } from '../context/DashboardContext';
 import { useAuth } from '../context/AuthContext';
@@ -70,7 +72,9 @@ export const Sidebar = () => {
           icon: Link2,
           badge: totalSavedBacklinks ? `${totalSavedBacklinks}` : undefined
         },
-        { label: 'Link Acquisition', path: '/link-acquisition', icon: Target },
+        { label: 'Link Prospecting', path: '/link-acquisition', icon: Target },
+        { label: 'Campaigns', path: '/campaigns', icon: Rocket },
+        { label: 'Outreach & Emails', path: '/outreach', icon: Mail },
         { label: 'Marketplace', path: '/marketplace', icon: ShoppingBag, badge: 'New' }
       ]
     },
@@ -83,7 +87,7 @@ export const Sidebar = () => {
     {
       group: 'ANALYTICS',
       items: [
-        { label: 'Backlink Audit', path: '/backlink-audit', icon: ShieldCheck },
+        { label: 'Backlink Monitoring', path: '/monitoring', icon: ShieldCheck },
         { label: 'SEO Tools', path: '/seo-tools', icon: Wrench, badge: 'Live API' }
       ]
     },

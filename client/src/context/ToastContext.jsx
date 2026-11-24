@@ -6,8 +6,9 @@ export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
 
   const addToast = useCallback((message, type = 'success', duration = 4000) => {
+    const text = typeof message === 'string' ? message : message?.message || String(message || 'Notification');
     const id = `toast-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const newToast = { id, message, type, duration };
+    const newToast = { id, message: text, type, duration };
 
     setToasts((prev) => [...prev, newToast]);
 
@@ -23,7 +24,7 @@ export const ToastProvider = ({ children }) => {
   }, []);
 
   return (
-    <ToastContext.Provider value={{ toasts, addToast, removeToast }}>
+    <ToastContext.Provider value={{ toasts, addToast, showToast: addToast, removeToast }}>
       {children}
     </ToastContext.Provider>
   );

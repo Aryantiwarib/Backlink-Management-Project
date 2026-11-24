@@ -111,7 +111,7 @@ backlinkSchema.pre('save', function (next) {
   if (!this.sourceDomain && this.sourceUrl) {
     this.sourceDomain = extractDomainFromUrl(this.sourceUrl);
   }
-  next();
+  if (typeof next === 'function') next();
 });
 
 // Compound Unique Index: prevents duplicate backlinks for the same website

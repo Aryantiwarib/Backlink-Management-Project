@@ -55,7 +55,7 @@ export const getOverview = async (req, res) => {
       // Also attempt to fetch and persist individual backlink rows if provider provides them
       let backlinkRows = [];
       try {
-        backlinkRows = await seoService.fetchBacklinks(website.domain, { limit: 25 });
+        backlinkRows = await seoService.fetchBacklinks(website.domain, { limit: 50 });
       } catch (linkErr) {
         // Individual link rows may be restricted on some free tiers; this does not invalidate the snapshot
         console.warn(`[SEO Overview] Row-level link fetch warning: ${linkErr.message}`);
@@ -232,10 +232,12 @@ export const syncSeoData = async (req, res) => {
 
     // Fetch and save backlinks
     let backlinkRows = [];
+    let backlinkWarning = null;
     try {
       backlinkRows = await seoService.fetchBacklinks(website.domain, { limit: 50 });
     } catch (e) {
       console.warn(`[Sync SEO] Backlink row fetch note: ${e.message}`);
+      backlinkWarning = e.message;
     }
 
     const backlinkSaveResult = await backlinkStorageService.saveBacklinks({
@@ -255,6 +257,8 @@ export const syncSeoData = async (req, res) => {
       },
       snapshot: snapshotResult.snapshot,
       backlinksSaved: backlinkSaveResult.upsertedCount,
+      totalProcessedBacklinks: backlinkSaveResult.totalProcessed,
+      backlinkWarning,
       overview
     });
   } catch (error) {
