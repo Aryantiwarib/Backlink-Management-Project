@@ -27,6 +27,7 @@ export const ProspectDetailModal = ({
   const [contactEmail, setContactEmail] = useState('');
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (prospect) {
@@ -34,31 +35,38 @@ export const ProspectDetailModal = ({
       setNotes(prospect.notes || '');
       setContactEmail(prospect.contactEmail || '');
       setSavedSuccess(false);
+      setError('');
     }
   }, [prospect]);
 
   if (!isOpen || !prospect) return null;
 
   const handleSave = async () => {
-    if (!prospect.id) return;
+    const prospectId = prospect.id || prospect._id;
+    if (!prospectId) return;
     setSaving(true);
+    setError('');
     try {
-      await onUpdate(prospect.id, {
+      await onUpdate(prospectId, {
         status,
         notes,
         contactEmail
       });
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 2000);
+    } catch (err) {
+      setError(err?.message || 'Failed to save prospect');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async () => {
+    const prospectId = prospect.id || prospect._id;
+    if (!prospectId) return;
     if (!window.confirm(`Are you sure you want to remove ${prospect.prospectDomain}?`)) return;
-    if (onDelete && prospect.id) {
-      await onDelete(prospect.id);
+    if (onDelete) {
+      await onDelete(prospectId);
       onClose();
     }
   };
@@ -202,6 +210,13 @@ export const ProspectDetailModal = ({
             )}
           </div>
 
+          {error && (
+            <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+              <span>{error}</span>
+            </div>
+          )}
+
           {/* Status & Contact Fields */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -254,7 +269,7 @@ export const ProspectDetailModal = ({
 
         {/* Modal Footer */}
         <div className="p-4 sm:p-5 border-t border-white/[0.08] flex items-center justify-between bg-[#101419]">
-          {prospect.id ? (
+          {prospect.id || prospect._id ? (
             <button
               onClick={handleDelete}
               className="flex items-center gap-1.5 text-xs text-rose-400 hover:text-rose-300 transition-colors"

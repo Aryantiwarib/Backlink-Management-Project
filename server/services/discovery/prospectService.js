@@ -269,25 +269,41 @@ export class ProspectService {
       throw err;
     }
 
-    const update = {};
-    if (status && ['new', 'saved', 'reviewed', 'qualified', 'rejected'].includes(status)) {
-      update.status = status;
-    }
-    if (notes !== undefined) update.notes = String(notes).trim().slice(0, 2000);
-    if (Array.isArray(tags)) update.tags = tags.map((t) => String(t).trim()).filter(Boolean);
-    if (contactEmail !== undefined) update.contactEmail = String(contactEmail).trim();
-
-    const prospect = await Prospect.findOneAndUpdate(
-      { _id: prospectId, userId, websiteId },
-      { $set: update },
-      { returnDocument: 'after' }
-    );
-
+    const prospect = await Prospect.findOne({ _id: prospectId, userId, websiteId });
     if (!prospect) {
       const err = new Error('Prospect not found or unauthorized.');
       err.status = 404;
       throw err;
     }
+
+    if (status && ['new', 'saved', 'reviewed', 'qualified', 'rejected'].includes(status)) {
+      prospect.status = status;
+    }
+    if (notes !== undefined) prospect.notes = String(notes).trim().slice(0, 2000);
+    if (Array.isArray(tags)) prospect.tags = tags.map((t) => String(t).trim()).filter(Boolean);
+
+    if (contactEmail !== undefined) {
+      const cleanEmail = String(contactEmail).trim().toLowerCase();
+      prospect.contactEmail = cleanEmail;
+      if (cleanEmail) {
+        if (!Array.isArray(prospect.contactEmails)) prospect.contactEmails = [];
+        const existingIdx = prospect.contactEmails.findIndex(
+          (c) => (typeof c === 'string' ? c : c?.email)?.toLowerCase() === cleanEmail
+        );
+        if (existingIdx === -1) {
+          prospect.contactEmails.unshift({
+            email: cleanEmail,
+            source: 'manual',
+            confidence: 100,
+            verified: true,
+            discoveredAt: new Date()
+          });
+        }
+        prospect.contactStatus = 'found';
+      }
+    }
+
+    await prospect.save();
 
     return prospect.toSafeObject();
   }

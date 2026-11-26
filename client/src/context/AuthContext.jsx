@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authService } from '../api/authService';
 import { setAuthToken } from '../config/api';
+import { queryClient } from '../config/queryClient';
 
 const AuthContext = createContext(null);
 
@@ -94,6 +95,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setAuthToken(null);
       setUser(null);
+      queryClient.clear(); // Purge all cached user queries and data immediately
     }
   };
 

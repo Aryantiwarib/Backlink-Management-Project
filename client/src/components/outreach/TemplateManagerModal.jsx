@@ -82,7 +82,8 @@ export const TemplateManagerModal = ({
       if (isCreating) {
         await onCreate(payload);
       } else if (editingTemplate) {
-        await onUpdate(editingTemplate.id, payload);
+        const tId = editingTemplate.id || editingTemplate._id;
+        await onUpdate(tId, payload);
       }
 
       cancelEdit();
@@ -97,7 +98,8 @@ export const TemplateManagerModal = ({
     if (!window.confirm('Are you sure you want to delete this email template?')) return;
     try {
       await onDelete(templateId);
-      if (editingTemplate?.id === templateId) cancelEdit();
+      const currentEditingId = editingTemplate?.id || editingTemplate?._id;
+      if (currentEditingId === templateId) cancelEdit();
     } catch (err) {
       setError(err?.message || 'Failed to delete template.');
     }
@@ -156,10 +158,11 @@ export const TemplateManagerModal = ({
             ) : (
               <div className="space-y-2">
                 {templates.map((t) => {
-                  const isSelected = editingTemplate?.id === t.id;
+                  const tId = t.id || t._id;
+                  const isSelected = (editingTemplate?.id || editingTemplate?._id) === tId;
                   return (
                     <div
-                      key={t.id}
+                      key={tId}
                       onClick={() => startEdit(t)}
                       className={`p-3 rounded-2xl border cursor-pointer transition-all ${
                         isSelected
@@ -173,7 +176,7 @@ export const TemplateManagerModal = ({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleDelete(t.id);
+                              handleDelete(tId);
                             }}
                             className="p-1 rounded text-text-muted hover:text-rose-400 transition-colors"
                           >

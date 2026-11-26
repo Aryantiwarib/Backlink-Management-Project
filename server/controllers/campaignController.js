@@ -243,7 +243,7 @@ export async function getCampaignProspects(req, res, next) {
   try {
     const userId = req.user._id;
     const { websiteId, campaignId } = req.params;
-    const { page, limit, search, outreachStatus, sortBy, sortOrder } = req.query;
+    const { page, limit, search, outreachStatus, contactFilter, sortBy, sortOrder } = req.query;
 
     await validateWebsite(websiteId, userId);
 
@@ -255,6 +255,7 @@ export async function getCampaignProspects(req, res, next) {
       limit,
       search,
       outreachStatus,
+      contactFilter,
       sortBy,
       sortOrder
     });
@@ -369,6 +370,91 @@ export async function getCampaignActivities(req, res, next) {
     return res.status(200).json({
       success: true,
       activities
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * PATCH /api/campaigns/:websiteId/:campaignId/prospects/:assignmentId/contact
+ * Add, edit, or remove contact emails for an assigned prospect
+ */
+export async function updateProspectContact(req, res, next) {
+  try {
+    const userId = req.user._id;
+    const { websiteId, campaignId, assignmentId } = req.params;
+
+    await validateWebsite(websiteId, userId);
+
+    const result = await campaignService.updateProspectContact({
+      userId,
+      websiteId,
+      campaignId,
+      assignmentId,
+      contactData: req.body
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Prospect contact information updated.',
+      ...result
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/campaigns/:websiteId/:campaignId/discover
+ * Run or re-run automated discovery for a campaign
+ */
+export async function runDiscovery(req, res, next) {
+  try {
+    const userId = req.user._id;
+    const { websiteId, campaignId } = req.params;
+
+    await validateWebsite(websiteId, userId);
+
+    const result = await campaignService.runDiscovery({
+      userId,
+      websiteId,
+      campaignId
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Campaign discovery process completed.',
+      ...result
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/campaigns/:websiteId/:campaignId/contact-discovery
+ * Run or re-run automated contact discovery for a campaign
+ */
+export async function runContactDiscovery(req, res, next) {
+  try {
+    const userId = req.user._id;
+    const { websiteId, campaignId } = req.params;
+    const { forceRetry } = req.body || {};
+
+    await validateWebsite(websiteId, userId);
+
+    const result = await campaignService.runContactDiscovery({
+      userId,
+      websiteId,
+      campaignId,
+      forceRetry: Boolean(forceRetry)
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: result.message || 'Contact discovery process initiated.',
+      ...result
     });
   } catch (err) {
     next(err);

@@ -53,6 +53,17 @@ class EmailQueueService {
       throw err;
     }
 
+    if (campaign.status === 'paused') {
+      const err = new Error('Cannot queue outreach emails for a paused campaign. Please resume the campaign first.');
+      err.status = 400;
+      throw err;
+    }
+    if (campaign.status === 'completed' || campaign.status === 'archived') {
+      const err = new Error(`Cannot queue outreach emails for a ${campaign.status} campaign.`);
+      err.status = 400;
+      throw err;
+    }
+
     const queuedEmails = [];
     const activitiesToCreate = [];
 
@@ -171,6 +182,27 @@ class EmailQueueService {
       if (!emailItem) {
         this.isProcessing = false;
         return; // Nothing to process right now
+      }
+
+      // Check campaign state if email is associated with a campaign
+      if (emailItem.campaignId) {
+        const camp = await Campaign.findById(emailItem.campaignId).select('status');
+        if (camp) {
+          if (camp.status === 'paused') {
+            emailItem.status = 'pending';
+            emailItem.attempts = Math.max(0, emailItem.attempts - 1);
+            await emailItem.save();
+            this.isProcessing = false;
+            return;
+          }
+          if (camp.status === 'completed' || camp.status === 'archived') {
+            emailItem.status = 'cancelled';
+            emailItem.errorMessage = `Campaign was ${camp.status}`;
+            await emailItem.save();
+            this.isProcessing = false;
+            return;
+          }
+        }
       }
 
       // Attempt to send via Gmail API
@@ -312,6 +344,24 @@ class EmailQueueService {
       }).limit(20);
 
       for (const followUp of dueFollowUps) {
+        // Inspect campaign state
+        if (followUp.campaignId) {
+          const camp = await Campaign.findById(followUp.campaignId).select('status');
+          if (camp) {
+            if (camp.status === 'paused') {
+              // Leave scheduled and defer until campaign is resumed
+              continue;
+            }
+            if (camp.status === 'completed' || camp.status === 'archived') {
+              followUp.status = 'cancelled';
+              followUp.skipReason = `Campaign was marked as ${camp.status}`;
+              await followUp.save();
+              processedCount++;
+              continue;
+            }
+          }
+        }
+
         // Inspect current assignment state
         const assignment = await CampaignProspectAssignment.findById(followUp.assignmentId);
         if (!assignment) {

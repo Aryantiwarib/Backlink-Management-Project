@@ -106,6 +106,9 @@ export const TopHeader = () => {
         return { section: 'Analytics', page: 'Backlink Monitoring' };
       case '/seo-tools':
         return { section: 'Analytics', page: 'SEO Tools' };
+      case '/assistant':
+      case '/ai-assistant':
+        return { section: 'AI Intelligence', page: 'AI SEO Assistant' };
       case '/settings':
         return { section: 'System', page: 'Settings' };
       default:

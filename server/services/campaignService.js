@@ -4,6 +4,8 @@ import CampaignProspectAssignment, { OUTREACH_STATUSES } from '../models/Campaig
 import CampaignActivity from '../models/CampaignActivity.js';
 import Prospect from '../models/Prospect.js';
 import Website from '../models/Website.js';
+import { campaignDiscoveryService } from './discovery/campaignDiscoveryService.js';
+import { contactDiscoveryService } from './discovery/contactDiscoveryService.js';
 
 // Regex escape helper
 function escapeRegex(text) {
@@ -66,7 +68,16 @@ export class CampaignService {
       targetBacklinks = 0,
       startDate,
       endDate,
-      status = 'active'
+      status = 'active',
+      // Phase 10 Upgrade: Automated Discovery Fields
+      niche = '',
+      primaryKeywords = [],
+      additionalKeywords = [],
+      competitorDomains = [],
+      targetProspects = 50,
+      qualificationCriteria,
+      discoverySources,
+      autoDiscover = true
     } = campaignData;
 
     if (!name || !name.trim()) {
@@ -92,6 +103,32 @@ export class CampaignService {
       throw err;
     }
 
+    // Clean keywords & competitors arrays
+    const cleanPrimaryKws = Array.isArray(primaryKeywords)
+      ? primaryKeywords.map((k) => String(k).trim()).filter(Boolean)
+      : typeof primaryKeywords === 'string'
+      ? primaryKeywords.split(',').map((k) => k.trim()).filter(Boolean)
+      : [];
+
+    const cleanAdditionalKws = Array.isArray(additionalKeywords)
+      ? additionalKeywords.map((k) => String(k).trim()).filter(Boolean)
+      : typeof additionalKeywords === 'string'
+      ? additionalKeywords.split(',').map((k) => k.trim()).filter(Boolean)
+      : [];
+
+    const cleanCompetitors = Array.isArray(competitorDomains)
+      ? competitorDomains.map((c) => String(c).trim()).filter(Boolean)
+      : typeof competitorDomains === 'string'
+      ? competitorDomains.split(',').map((c) => c.trim()).filter(Boolean)
+      : [];
+
+    const hasDiscoveryInputs =
+      Boolean(niche && niche.trim()) ||
+      cleanPrimaryKws.length > 0 ||
+      cleanCompetitors.length > 0;
+
+    const shouldAutoDiscover = Boolean(autoDiscover && hasDiscoveryInputs);
+
     const campaign = await Campaign.create({
       userId,
       websiteId,
@@ -102,7 +139,27 @@ export class CampaignService {
       targetBacklinks: targetNum,
       startDate: parsedStart,
       endDate: parsedEnd,
-      status: CAMPAIGN_STATUSES.includes(status) ? status : 'active'
+      status: CAMPAIGN_STATUSES.includes(status) ? status : 'active',
+      niche: niche.trim(),
+      primaryKeywords: cleanPrimaryKws,
+      additionalKeywords: cleanAdditionalKws,
+      competitorDomains: cleanCompetitors,
+      targetProspects: Math.max(1, parseInt(targetProspects, 10) || 50),
+      qualificationCriteria: qualificationCriteria || {
+        minDomainAuthority: 20,
+        minPageAuthority: 0,
+        maxSpamScore: 30,
+        minOpportunityScore: 50,
+        relevantCategories: [],
+        excludedDomains: [],
+        excludeContacted: true,
+        excludeRejected: true
+      },
+      discoverySources: discoverySources || {
+        enableKeywordDiscovery: true,
+        enableCompetitorDiscovery: true
+      },
+      discoveryStatus: shouldAutoDiscover ? 'discovering' : 'pending'
     });
 
     // Record creation activity
@@ -115,9 +172,24 @@ export class CampaignService {
       metadata: {
         campaignType: campaign.campaignType,
         targetBacklinks: campaign.targetBacklinks,
-        status: campaign.status
+        status: campaign.status,
+        niche: campaign.niche,
+        autoDiscover: shouldAutoDiscover
       }
     });
+
+    // If autoDiscover requested and parameters supplied, trigger automated discovery pipeline
+    if (shouldAutoDiscover) {
+      campaignDiscoveryService
+        .runCampaignDiscovery({
+          userId,
+          websiteId,
+          campaignId: campaign._id
+        })
+        .catch((err) => {
+          console.error('[CampaignService] Automated discovery async error:', err.message);
+        });
+    }
 
     return campaign.toSafeObject();
   }
@@ -421,7 +493,7 @@ export class CampaignService {
       metadata: updateData
     });
 
-    return campaign.toSafeObject();
+    return this.getCampaignById({ userId, websiteId, campaignId: campaign._id });
   }
 
   /**
@@ -477,7 +549,7 @@ export class CampaignService {
       metadata: { prevStatus, newStatus: status }
     });
 
-    return campaign.toSafeObject();
+    return this.getCampaignById({ userId, websiteId, campaignId: campaign._id });
   }
 
   /**
@@ -623,6 +695,7 @@ export class CampaignService {
     limit = 20,
     search = '',
     outreachStatus = 'all',
+    contactFilter = 'all',
     sortBy = 'assignedAt',
     sortOrder = 'desc'
   }) {
@@ -647,45 +720,128 @@ export class CampaignService {
     const query = {
       userId,
       websiteId,
-      campaignId
+      campaignId,
+      isExcluded: { $ne: true }
     };
 
     if (outreachStatus && outreachStatus !== 'all') {
       query.outreachStatus = outreachStatus;
     }
 
-    // If searching, find matching prospect IDs first
+    // Build conditions for prospect matching (search + contactFilter)
+    const prospectConditions = [];
+
+    if (contactFilter === 'email_available') {
+      prospectConditions.push({
+        $or: [
+          { contactEmail: { $exists: true, $ne: '' } },
+          { 'contactEmails.0': { $exists: true } }
+        ]
+      });
+    } else if (contactFilter === 'no_email') {
+      prospectConditions.push({
+        $and: [
+          { $or: [{ contactEmail: { $exists: false } }, { contactEmail: '' }, { contactEmail: null }] },
+          { $or: [{ contactEmails: { $exists: false } }, { contactEmails: { $size: 0 } }] }
+        ]
+      });
+    } else if (contactFilter === 'contact_pending') {
+      prospectConditions.push({
+        contactStatus: { $in: ['searching', 'not_searched'] }
+      });
+    } else if (contactFilter === 'contact_failed') {
+      prospectConditions.push({
+        contactStatus: 'failed'
+      });
+    } else if (contactFilter === 'high_opportunity') {
+      prospectConditions.push({
+        opportunityScore: { $gte: 70 }
+      });
+    }
+
+    // If searching, add search condition
     if (search && search.trim()) {
       const escaped = escapeRegex(search.trim());
       const regex = new RegExp(escaped, 'i');
-      const matchingProspects = await Prospect.find({
+      prospectConditions.push({
+        $or: [{ prospectDomain: regex }, { prospectUrl: regex }, { contactEmail: regex }, { notes: regex }]
+      });
+    }
+
+    if (prospectConditions.length > 0) {
+      const pQuery = {
         userId,
         websiteId,
-        $or: [{ prospectDomain: regex }, { prospectUrl: regex }, { notes: regex }]
-      }).select('_id');
-
+        $and: prospectConditions
+      };
+      const matchingProspects = await Prospect.find(pQuery).select('_id');
       const pIds = matchingProspects.map((p) => p._id);
-      query.$or = [{ prospectId: { $in: pIds } }, { notes: regex }];
+      query.prospectId = { $in: pIds };
     }
 
     const sortField = ALLOWED_ASSIGNMENT_SORT_FIELDS.includes(sortBy) ? sortBy : 'assignedAt';
     const sortDirection = String(sortOrder).toLowerCase() === 'asc' ? 1 : -1;
     const sort = { [sortField]: sortDirection };
 
-    const [total, assignments] = await Promise.all([
+    // Also calculate contact summary stats for campaign tabs
+    const [total, assignments, allAssignmentsForStats] = await Promise.all([
       CampaignProspectAssignment.countDocuments(query),
       CampaignProspectAssignment.find(query)
         .populate('prospectId')
         .sort(sort)
         .skip(skip)
-        .limit(limitNum)
+        .limit(limitNum),
+      CampaignProspectAssignment.find({
+        userId,
+        websiteId,
+        campaignId,
+        isExcluded: { $ne: true }
+      })
+        .select('prospectId')
+        .populate('prospectId', 'contactEmail contactEmails contactStatus opportunityScore')
     ]);
+
+    let emailAvailableCount = 0;
+    let noEmailCount = 0;
+    let pendingCount = 0;
+    let failedCount = 0;
+    let highOpportunityCount = 0;
+
+    for (const a of allAssignmentsForStats) {
+      const p = a.prospectId;
+      if (p && typeof p === 'object') {
+        const hasEmail = Boolean(
+          (p.contactEmail && p.contactEmail.trim() !== '') ||
+          (Array.isArray(p.contactEmails) && p.contactEmails.length > 0)
+        );
+        if (hasEmail) emailAvailableCount++;
+        else noEmailCount++;
+
+        if (p.contactStatus === 'searching' || p.contactStatus === 'not_searched') {
+          pendingCount++;
+        } else if (p.contactStatus === 'failed') {
+          failedCount++;
+        }
+
+        if ((p.opportunityScore || 0) >= 70) {
+          highOpportunityCount++;
+        }
+      }
+    }
 
     const totalPages = Math.ceil(total / limitNum) || 1;
 
     return {
       campaign: campaign.toSafeObject(),
       assignments: assignments.map((a) => a.toSafeObject()),
+      stats: {
+        total: allAssignmentsForStats.length,
+        emailAvailable: emailAvailableCount,
+        noEmail: noEmailCount,
+        contactPending: pendingCount,
+        contactFailed: failedCount,
+        highOpportunity: highOpportunityCount
+      },
       pagination: {
         page: pageNum,
         limit: limitNum,
@@ -743,6 +899,18 @@ export class CampaignService {
       assignment.notes = String(notes).trim().slice(0, 2000);
     }
 
+    if (updateData.prospectNotes !== undefined && assignment.prospectId) {
+      const prospectDoc = await Prospect.findOne({
+        _id: assignment.prospectId._id || assignment.prospectId,
+        userId,
+        websiteId
+      });
+      if (prospectDoc) {
+        prospectDoc.notes = String(updateData.prospectNotes).trim().slice(0, 2000);
+        await prospectDoc.save();
+      }
+    }
+
     if (followUpAt !== undefined) {
       assignment.followUpAt = followUpAt ? new Date(followUpAt) : null;
     }
@@ -773,7 +941,8 @@ export class CampaignService {
       });
     }
 
-    return assignment.toSafeObject();
+    const reloaded = await CampaignProspectAssignment.findById(assignment._id).populate('prospectId');
+    return reloaded ? reloaded.toSafeObject() : assignment.toSafeObject();
   }
 
   /**
@@ -803,13 +972,21 @@ export class CampaignService {
 
     await CampaignProspectAssignment.deleteOne({ _id: assignmentId });
 
+    // Exclude domain from future automated discovery reruns
+    if (domainName && domainName !== 'prospect') {
+      await Campaign.updateOne(
+        { _id: campaignId },
+        { $addToSet: { 'qualificationCriteria.excludedDomains': domainName } }
+      );
+    }
+
     // Log activity
     await this.recordActivity({
       userId,
       websiteId,
       campaignId,
       action: 'prospect_removed',
-      description: `Removed ${domainName} from campaign.`,
+      description: `Removed ${domainName} from campaign and added to campaign exclusions.`,
       metadata: { domain: domainName }
     });
 
@@ -819,6 +996,121 @@ export class CampaignService {
       message: `Removed ${domainName} from campaign. Original Phase 9 prospect preserved.`,
       id: assignmentId
     };
+  }
+
+  /**
+   * Manually add, update, or remove contact information for an assigned prospect
+   */
+  async updateProspectContact({ userId, websiteId, campaignId, assignmentId, contactData }) {
+    if (!mongoose.Types.ObjectId.isValid(campaignId) || !mongoose.Types.ObjectId.isValid(assignmentId)) {
+      const err = new Error('Invalid ID format.');
+      err.status = 400;
+      throw err;
+    }
+
+    const assignment = await CampaignProspectAssignment.findOne({
+      _id: assignmentId,
+      campaignId,
+      userId,
+      websiteId
+    }).populate('prospectId');
+
+    if (!assignment || !assignment.prospectId) {
+      const err = new Error('Campaign prospect assignment not found or unauthorized.');
+      err.status = 404;
+      throw err;
+    }
+
+    const prospect = await Prospect.findOne({
+      _id: assignment.prospectId._id,
+      userId,
+      websiteId
+    });
+
+    if (!prospect) {
+      const err = new Error('Prospect record not found.');
+      err.status = 404;
+      throw err;
+    }
+
+    const { action = 'set', email, name = '', role = '', sourceUrl = '' } = contactData || {};
+
+    if (action === 'set' || action === 'add') {
+      if (!contactDiscoveryService.isValidEmail(email)) {
+        const err = new Error('Invalid contact email address format.');
+        err.status = 400;
+        throw err;
+      }
+
+      const cleanEmail = email.trim().toLowerCase();
+      const existing = (prospect.contactEmails || []).filter((e) => e.email !== cleanEmail);
+      existing.unshift({
+        email: cleanEmail,
+        name: name.trim(),
+        role: role.trim(),
+        sourceUrl: sourceUrl.trim(),
+        discoveryMethod: 'manual',
+        confidenceScore: 100,
+        verificationStatus: 'verified',
+        discoveredAt: new Date()
+      });
+
+      prospect.contactEmails = existing;
+      prospect.contactEmail = cleanEmail;
+      prospect.contactStatus = 'found';
+      await prospect.save();
+    } else if (action === 'remove') {
+      const cleanEmail = (email || '').trim().toLowerCase();
+      prospect.contactEmails = (prospect.contactEmails || []).filter((e) => e.email !== cleanEmail);
+      prospect.contactEmail = prospect.contactEmails.length > 0 ? prospect.contactEmails[0].email : '';
+      if (prospect.contactEmails.length === 0) {
+        prospect.contactStatus = 'not_found';
+      }
+      await prospect.save();
+    }
+
+    return {
+      assignmentId,
+      prospectId: prospect._id.toString(),
+      contactEmail: prospect.contactEmail,
+      contactEmails: prospect.contactEmails,
+      contactStatus: prospect.contactStatus
+    };
+  }
+
+  /**
+   * Run or rerun automated discovery for an existing campaign
+   */
+  async runDiscovery({ userId, websiteId, campaignId }) {
+    if (!mongoose.Types.ObjectId.isValid(campaignId)) {
+      const err = new Error('Invalid campaign ID format.');
+      err.status = 400;
+      throw err;
+    }
+
+    return campaignDiscoveryService.runCampaignDiscovery({
+      userId,
+      websiteId,
+      campaignId
+    });
+  }
+
+  /**
+   * Run or rerun automated contact discovery for a campaign
+   */
+  async runContactDiscovery({ userId, websiteId, campaignId, forceRetry = false }) {
+    if (!mongoose.Types.ObjectId.isValid(campaignId)) {
+      const err = new Error('Invalid campaign ID format.');
+      err.status = 400;
+      throw err;
+    }
+
+    return contactDiscoveryService.runCampaignContactDiscovery({
+      userId,
+      websiteId,
+      campaignId,
+      forceRetry
+    });
   }
 
   /**

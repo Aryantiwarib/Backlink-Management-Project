@@ -70,6 +70,15 @@ export class CompetitorDiscoveryProvider {
             if (link.linkType === 'dofollow') {
               existing.linkType = 'dofollow';
             }
+            if (existing.domainAuthority === null && (link.sourceDomainAuthority != null || link.domainAuthority != null)) {
+              existing.domainAuthority = link.sourceDomainAuthority ?? link.domainAuthority;
+            }
+            if (existing.pageAuthority === null && (link.sourcePageAuthority != null || link.pageAuthority != null)) {
+              existing.pageAuthority = link.sourcePageAuthority ?? link.pageAuthority;
+            }
+            if (existing.spamScore === null && (link.meta?.spamScore != null || link.spamScore != null)) {
+              existing.spamScore = link.meta?.spamScore ?? link.spamScore;
+            }
           } else {
             // New candidate prospect
             candidateMap.set(refDomain, {
@@ -78,9 +87,9 @@ export class CompetitorDiscoveryProvider {
               source: 'competitor',
               discoveredFrom: compDomain,
               competitorDomains: [compDomain],
-              domainAuthority: link.sourceDomainAuthority ?? null,
-              pageAuthority: link.sourcePageAuthority ?? null,
-              spamScore: null,
+              domainAuthority: link.sourceDomainAuthority ?? link.domainAuthority ?? null,
+              pageAuthority: link.sourcePageAuthority ?? link.pageAuthority ?? null,
+              spamScore: link.meta?.spamScore ?? link.spamScore ?? null,
               linkType: link.linkType || 'unknown',
               sampleAnchorText: link.anchorText || '',
               targetUrl: link.targetUrl || ''

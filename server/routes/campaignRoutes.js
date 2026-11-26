@@ -12,7 +12,10 @@ import {
   updateAssignment,
   removeAssignment,
   bulkUpdateAssignmentsStatus,
-  getCampaignActivities
+  getCampaignActivities,
+  updateProspectContact,
+  runDiscovery,
+  runContactDiscovery
 } from '../controllers/campaignController.js';
 
 const router = express.Router();
@@ -28,11 +31,16 @@ router.patch('/:websiteId/:campaignId', updateCampaign);
 router.patch('/:websiteId/:campaignId/status', updateCampaignStatus);
 router.delete('/:websiteId/:campaignId', deleteCampaign);
 
-// Campaign Prospect Assignments
+// Automated Discovery & Contact Pipeline Triggers
+router.post('/:websiteId/:campaignId/discover', runDiscovery);
+router.post('/:websiteId/:campaignId/contact-discovery', runContactDiscovery);
+
+// Campaign Prospect Assignments & Contact Management
 router.get('/:websiteId/:campaignId/prospects', getCampaignProspects);
 router.post('/:websiteId/:campaignId/prospects', assignProspects);
 router.post('/:websiteId/:campaignId/prospects/bulk-status', bulkUpdateAssignmentsStatus);
 router.patch('/:websiteId/:campaignId/prospects/:assignmentId', updateAssignment);
+router.patch('/:websiteId/:campaignId/prospects/:assignmentId/contact', updateProspectContact);
 router.delete('/:websiteId/:campaignId/prospects/:assignmentId', removeAssignment);
 
 // Campaign Activity Timeline

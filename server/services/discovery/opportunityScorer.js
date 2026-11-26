@@ -53,10 +53,12 @@ export function calculateOpportunityScore({
       });
     }
   } else {
+    // Missing metrics must not be treated as zero: provide fair neutral baseline authority (15 pts)
+    score += 15;
     factors.push({
       factor: 'DA Unassessed',
-      points: 0,
-      description: 'Domain authority metric unavailable from provider'
+      points: 15,
+      description: 'Domain authority metric unassessed from provider; evaluated with neutral baseline authority'
     });
   }
 

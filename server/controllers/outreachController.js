@@ -552,6 +552,10 @@ export async function cancelFollowUp(req, res, next) {
     const userId = req.user._id;
     const { followUpId } = req.params;
 
+    if (!mongoose.Types.ObjectId.isValid(followUpId)) {
+      return res.status(400).json({ success: false, message: 'Invalid follow-up ID format.' });
+    }
+
     const followUp = await ScheduledFollowUp.findOne({ _id: followUpId, userId });
     if (!followUp) {
       return res.status(404).json({ success: false, message: 'Follow-up not found.' });

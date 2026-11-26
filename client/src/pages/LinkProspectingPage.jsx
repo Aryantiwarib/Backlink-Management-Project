@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { queryClient } from '../config/queryClient';
 import {
   Compass,
   Users,
@@ -25,25 +27,16 @@ import { ProviderSetupGuideModal } from '../components/prospecting/ProviderSetup
 export const LinkProspectingPage = () => {
   const { activeWebsite, websites, loading: websitesLoading } = useWebsite();
   const { addToast } = useToast();
+  const siteId = activeWebsite?._id || activeWebsite?.id;
 
   const [mainTab, setMainTab] = useState('discovery'); // 'discovery' | 'saved'
   const [discoverySubTab, setDiscoverySubTab] = useState('competitor'); // 'competitor' | 'keyword'
-
-  // Stats
-  const [stats, setStats] = useState(null);
-  const [statsLoading, setStatsLoading] = useState(false);
-
-  // Discovery status
-  const [discoveryStatus, setDiscoveryStatus] = useState(null);
 
   // Discovered results
   const [discoveredCandidates, setDiscoveredCandidates] = useState([]);
   const [discoveryLoading, setDiscoveryLoading] = useState(false);
 
   // Saved pipeline state
-  const [savedProspects, setSavedProspects] = useState([]);
-  const [savedLoading, setSavedLoading] = useState(false);
-  const [savedPagination, setSavedPagination] = useState(null);
   const [savedPage, setSavedPage] = useState(1);
   const [savedFilters, setSavedFilters] = useState({
     search: '',
@@ -58,63 +51,50 @@ export const LinkProspectingPage = () => {
   const [selectedProspect, setSelectedProspect] = useState(null);
   const [setupGuideOpen, setSetupGuideOpen] = useState(false);
 
-  // Load stats
-  const loadStats = useCallback(async () => {
-    if (!activeWebsite?._id) return;
-    setStatsLoading(true);
-    try {
-      const data = await prospectApi.getStats(activeWebsite._id);
-      setStats(data);
-    } catch (err) {
-      console.error('Failed to load prospect stats:', err);
-    } finally {
-      setStatsLoading(false);
-    }
-  }, [activeWebsite?._id]);
+  // React Query: Prospect Stats (cached across navigations)
+  const {
+    data: stats,
+    isLoading: statsLoading
+  } = useQuery({
+    queryKey: ['prospect-stats', siteId],
+    queryFn: () => prospectApi.getStats(siteId),
+    enabled: Boolean(siteId),
+    staleTime: 1000 * 60 * 2
+  });
 
-  // Load discovery provider status
-  const loadDiscoveryStatus = useCallback(async () => {
-    try {
-      const status = await prospectApi.getDiscoveryStatus();
-      setDiscoveryStatus(status);
-    } catch (err) {
-      console.warn('Failed to load discovery status:', err);
-    }
-  }, []);
+  // React Query: Discovery Status
+  const { data: discoveryStatus } = useQuery({
+    queryKey: ['prospect-discovery-status'],
+    queryFn: () => prospectApi.getDiscoveryStatus(),
+    staleTime: 1000 * 60 * 5
+  });
 
-  // Load saved prospects
-  const loadSavedProspects = useCallback(
-    async (page = 1, filters = savedFilters) => {
-      if (!activeWebsite?._id) return;
-      setSavedLoading(true);
-      try {
-        const data = await prospectApi.getSavedProspects(activeWebsite._id, {
-          page,
-          limit: 12,
-          ...filters
-        });
-        setSavedProspects(data.prospects || []);
-        setSavedPagination(data.pagination);
-        setSavedPage(page);
-      } catch (err) {
-        console.error('Failed to load saved prospects:', err);
-      } finally {
-        setSavedLoading(false);
-      }
-    },
-    [activeWebsite?._id, savedFilters]
-  );
+  // React Query: Saved Prospects List (cached across navigations)
+  const {
+    data: savedData,
+    isLoading: savedLoading
+  } = useQuery({
+    queryKey: ['prospects', siteId, { page: savedPage, ...savedFilters }],
+    queryFn: () =>
+      prospectApi.getSavedProspects(siteId, {
+        page: savedPage,
+        limit: 12,
+        ...savedFilters
+      }),
+    enabled: Boolean(siteId),
+    placeholderData: (prev) => prev,
+    staleTime: 1000 * 60 * 2
+  });
 
-  // Effect on active website change
-  useEffect(() => {
-    if (activeWebsite?._id) {
-      loadStats();
-      loadDiscoveryStatus();
-      loadSavedProspects(1, savedFilters);
-      // Clear discovered candidates on website change
-      setDiscoveredCandidates([]);
-    }
-  }, [activeWebsite?._id, loadStats, loadDiscoveryStatus, loadSavedProspects]);
+  const savedProspects = savedData?.prospects || [];
+  const savedPagination = savedData?.pagination || null;
+
+  const invalidateProspectData = () => {
+    queryClient.invalidateQueries({ queryKey: ['prospects', siteId] });
+    queryClient.invalidateQueries({ queryKey: ['prospect-stats', siteId] });
+    queryClient.invalidateQueries({ queryKey: ['campaign-assignments', siteId] });
+    queryClient.invalidateQueries({ queryKey: ['campaigns', siteId] });
+  };
 
   // Trigger competitor discovery
   const handleCompetitorDiscover = async ({ competitorDomains, limit }) => {
@@ -161,20 +141,18 @@ export const LinkProspectingPage = () => {
 
   // Save candidate
   const handleSaveProspect = async (candidate) => {
-    if (!activeWebsite?._id) return;
+    if (!siteId) return;
     try {
-      const res = await prospectApi.saveProspect(activeWebsite._id, candidate);
+      const res = await prospectApi.saveProspect(siteId, candidate);
       addToast(`Saved ${candidate.prospectDomain} to your pipeline.`, 'success');
-      // Update local candidate state
       setDiscoveredCandidates((prev) =>
         prev.map((c) =>
           c.prospectDomain === candidate.prospectDomain
-            ? { ...c, isSaved: true, savedStatus: res.prospect.status, savedId: res.prospect.id }
+            ? { ...c, isSaved: true, savedStatus: res.prospect?.status || 'saved', savedId: res.prospect?.id }
             : c
         )
       );
-      loadStats();
-      loadSavedProspects(1, savedFilters);
+      invalidateProspectData();
     } catch (err) {
       addToast(err.message || 'Failed to save prospect', 'error');
     }
@@ -182,9 +160,9 @@ export const LinkProspectingPage = () => {
 
   // Bulk save candidates
   const handleBulkSave = async (candidatesList) => {
-    if (!activeWebsite?._id) return;
+    if (!siteId) return;
     try {
-      const res = await prospectApi.bulkSaveProspects(activeWebsite._id, candidatesList);
+      const res = await prospectApi.bulkSaveProspects(siteId, candidatesList);
       addToast(`Saved ${res.savedCount} new prospects to your pipeline.`, 'success');
       const savedDomains = new Set(candidatesList.map((c) => c.prospectDomain));
       setDiscoveredCandidates((prev) =>
@@ -192,8 +170,7 @@ export const LinkProspectingPage = () => {
           savedDomains.has(c.prospectDomain) ? { ...c, isSaved: true, savedStatus: 'saved' } : c
         )
       );
-      loadStats();
-      loadSavedProspects(1, savedFilters);
+      invalidateProspectData();
     } catch (err) {
       addToast(err.message || 'Bulk save failed', 'error');
     }
@@ -201,13 +178,10 @@ export const LinkProspectingPage = () => {
 
   // Update status
   const handleUpdateStatus = async (prospectId, newStatus) => {
-    if (!activeWebsite?._id) return;
+    if (!siteId) return;
     try {
-      await prospectApi.updateProspect(activeWebsite._id, prospectId, { status: newStatus });
-      setSavedProspects((prev) =>
-        prev.map((p) => (p.id === prospectId ? { ...p, status: newStatus } : p))
-      );
-      loadStats();
+      await prospectApi.updateProspect(siteId, prospectId, { status: newStatus });
+      invalidateProspectData();
       addToast(`Status updated to ${newStatus}.`, 'success');
     } catch (err) {
       addToast('Failed to update status', 'error');
@@ -216,11 +190,10 @@ export const LinkProspectingPage = () => {
 
   // Delete prospect
   const handleDeleteProspect = async (prospectId) => {
-    if (!activeWebsite?._id) return;
+    if (!siteId) return;
     try {
-      await prospectApi.deleteProspect(activeWebsite._id, prospectId);
-      setSavedProspects((prev) => prev.filter((p) => p.id !== prospectId));
-      loadStats();
+      await prospectApi.deleteProspect(siteId, prospectId);
+      invalidateProspectData();
       addToast('Prospect removed.', 'info');
     } catch (err) {
       addToast('Failed to delete prospect', 'error');
@@ -229,13 +202,10 @@ export const LinkProspectingPage = () => {
 
   // Bulk update status
   const handleBulkUpdateStatus = async (prospectIds, newStatus) => {
-    if (!activeWebsite?._id) return;
+    if (!siteId) return;
     try {
-      await prospectApi.bulkUpdateStatus(activeWebsite._id, { prospectIds, status: newStatus });
-      setSavedProspects((prev) =>
-        prev.map((p) => (prospectIds.includes(p.id) ? { ...p, status: newStatus } : p))
-      );
-      loadStats();
+      await prospectApi.bulkUpdateStatus(siteId, { prospectIds, status: newStatus });
+      invalidateProspectData();
       addToast(`Updated status for ${prospectIds.length} prospects.`, 'success');
     } catch (err) {
       addToast('Failed to bulk update status', 'error');
@@ -244,11 +214,10 @@ export const LinkProspectingPage = () => {
 
   // Bulk delete
   const handleBulkDelete = async (prospectIds) => {
-    if (!activeWebsite?._id) return;
+    if (!siteId) return;
     try {
-      await prospectApi.bulkDelete(activeWebsite._id, prospectIds);
-      setSavedProspects((prev) => prev.filter((p) => !prospectIds.includes(p.id)));
-      loadStats();
+      await prospectApi.bulkDelete(siteId, prospectIds);
+      invalidateProspectData();
       addToast(`Deleted ${prospectIds.length} prospects.`, 'info');
     } catch (err) {
       addToast('Failed to bulk delete prospects', 'error');
@@ -259,7 +228,7 @@ export const LinkProspectingPage = () => {
   const handleFilterChange = (key, value) => {
     const nextFilters = { ...savedFilters, [key]: value };
     setSavedFilters(nextFilters);
-    loadSavedProspects(1, nextFilters);
+    setSavedPage(1);
   };
 
   // Open detail modal
@@ -270,11 +239,10 @@ export const LinkProspectingPage = () => {
 
   // Handle modal update
   const handleModalUpdate = async (prospectId, updateData) => {
-    if (!activeWebsite?._id) return;
-    const updated = await prospectApi.updateProspect(activeWebsite._id, prospectId, updateData);
+    if (!siteId) return;
+    const updated = await prospectApi.updateProspect(siteId, prospectId, updateData);
     setSelectedProspect(updated);
-    setSavedProspects((prev) => prev.map((p) => (p.id === prospectId ? updated : p)));
-    loadStats();
+    invalidateProspectData();
   };
 
   // Export CSV
@@ -467,7 +435,7 @@ export const LinkProspectingPage = () => {
           prospects={savedProspects}
           loading={savedLoading}
           pagination={savedPagination}
-          onPageChange={(page) => loadSavedProspects(page, savedFilters)}
+          onPageChange={(page) => setSavedPage(page)}
           filters={savedFilters}
           onFilterChange={handleFilterChange}
           onUpdateStatus={handleUpdateStatus}

@@ -167,7 +167,7 @@ export const CampaignTable = ({
                     <div className="flex items-center justify-end gap-1.5">
                       {campaign.status === 'active' && (
                         <button
-                          onClick={() => onStatusChange(campaign.id, 'paused')}
+                          onClick={() => onStatusChange(campaign.id || campaign._id, 'paused')}
                           className="p-1.5 rounded-lg text-text-muted hover:text-amber-400 hover:bg-white/[0.04] transition-colors"
                           title="Pause Campaign"
                         >
@@ -177,7 +177,7 @@ export const CampaignTable = ({
 
                       {campaign.status === 'paused' && (
                         <button
-                          onClick={() => onStatusChange(campaign.id, 'active')}
+                          onClick={() => onStatusChange(campaign.id || campaign._id, 'active')}
                           className="p-1.5 rounded-lg text-text-muted hover:text-emerald-400 hover:bg-white/[0.04] transition-colors"
                           title="Resume Campaign"
                         >
@@ -185,9 +185,19 @@ export const CampaignTable = ({
                         </button>
                       )}
 
+                      {campaign.status !== 'completed' && campaign.status !== 'archived' && (
+                        <button
+                          onClick={() => onStatusChange(campaign.id || campaign._id, 'completed')}
+                          className="p-1.5 rounded-lg text-text-muted hover:text-blue-400 hover:bg-white/[0.04] transition-colors"
+                          title="Mark Complete"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+
                       {campaign.status !== 'archived' && (
                         <button
-                          onClick={() => onStatusChange(campaign.id, 'archived')}
+                          onClick={() => onStatusChange(campaign.id || campaign._id, 'archived')}
                           className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-white/[0.04] transition-colors"
                           title="Archive Campaign"
                         >
@@ -204,7 +214,7 @@ export const CampaignTable = ({
                       </button>
 
                       <button
-                        onClick={() => onDelete(campaign.id, campaign.name)}
+                        onClick={() => onDelete(campaign.id || campaign._id, campaign.name)}
                         className="p-1.5 rounded-lg text-text-muted hover:text-rose-400 hover:bg-white/[0.04] transition-colors"
                         title="Delete Campaign"
                       >
@@ -212,7 +222,7 @@ export const CampaignTable = ({
                       </button>
 
                       <button
-                        onClick={() => navigate(`/campaigns/${campaign.id}`)}
+                        onClick={() => navigate(`/campaigns/${campaign.id || campaign._id}`)}
                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-semibold border border-emerald-500/20 transition-all ml-1"
                       >
                         <span>Manage</span>

@@ -1,4 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { queryClient } from '../config/queryClient';
 import {
   Rocket,
   Plus,
@@ -33,18 +36,15 @@ const CAMPAIGN_TYPES = [
 ];
 
 export const CampaignManagementPage = () => {
+  const navigate = useNavigate();
   const { activeWebsite } = useWebsite();
   const { addToast } = useToast();
-
-  const [stats, setStats] = useState(null);
-  const [statsLoading, setStatsLoading] = useState(false);
-
-  const [campaigns, setCampaigns] = useState([]);
-  const [pagination, setPagination] = useState({ page: 1, limit: 12, total: 0, totalPages: 1 });
-  const [loading, setLoading] = useState(false);
+  const siteId = activeWebsite?._id || activeWebsite?.id;
 
   // Filters & Controls
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  const [submittedSearch, setSubmittedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('All Strategies');
   const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'table'
@@ -53,70 +53,67 @@ export const CampaignManagementPage = () => {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState(null);
 
-  // Load High-Level Stats
-  const loadStats = useCallback(async () => {
-    if (!activeWebsite?._id) return;
-    setStatsLoading(true);
-    try {
-      const data = await campaignApi.getCampaignStats(activeWebsite._id);
-      setStats(data);
-    } catch (err) {
-      console.error('Failed to load campaign stats:', err);
-    } finally {
-      setStatsLoading(false);
-    }
-  }, [activeWebsite?._id]);
+  // React Query: Load High-Level Stats (cached across navigations)
+  const {
+    data: stats,
+    isLoading: statsLoading
+  } = useQuery({
+    queryKey: ['campaign-stats', siteId],
+    queryFn: () => campaignApi.getCampaignStats(siteId),
+    enabled: Boolean(siteId),
+    staleTime: 1000 * 60 * 2
+  });
 
-  // Load Campaigns List
-  const loadCampaigns = useCallback(
-    async (page = 1) => {
-      if (!activeWebsite?._id) return;
-      setLoading(true);
-      try {
-        const params = {
-          page,
-          limit: pagination.limit,
-          search: search.trim() || undefined,
-          status: statusFilter,
-          campaignType: typeFilter !== 'All Strategies' ? typeFilter : undefined,
-          sortBy: 'updatedAt',
-          sortOrder: 'desc'
-        };
+  const queryParams = useMemo(() => ({
+    page,
+    limit: 12,
+    search: submittedSearch.trim() || undefined,
+    status: statusFilter,
+    campaignType: typeFilter !== 'All Strategies' ? typeFilter : undefined,
+    sortBy: 'updatedAt',
+    sortOrder: 'desc'
+  }), [page, submittedSearch, statusFilter, typeFilter]);
 
-        const res = await campaignApi.getCampaigns(activeWebsite._id, params);
-        setCampaigns(res.campaigns || []);
-        if (res.pagination) {
-          setPagination(res.pagination);
-        }
-      } catch (err) {
-        addToast(err?.message || 'Failed to fetch campaigns', 'error');
-      } finally {
-        setLoading(false);
-      }
-    },
-    [activeWebsite?._id, search, statusFilter, typeFilter, pagination.limit, addToast]
-  );
+  // React Query: Load Campaigns List (cached across navigations)
+  const {
+    data: campaignsRes,
+    isLoading: campaignsLoading,
+    isFetching
+  } = useQuery({
+    queryKey: ['campaigns', siteId, queryParams],
+    queryFn: () => campaignApi.getCampaigns(siteId, queryParams),
+    enabled: Boolean(siteId),
+    placeholderData: (previousData) => previousData,
+    staleTime: 1000 * 60 * 2
+  });
 
-  useEffect(() => {
-    if (activeWebsite?._id) {
-      loadStats();
-      loadCampaigns(1);
-    }
-  }, [activeWebsite?._id, statusFilter, typeFilter, loadStats, loadCampaigns]);
+  const campaigns = campaignsRes?.campaigns || [];
+  const pagination = campaignsRes?.pagination || { page: 1, limit: 12, total: 0, totalPages: 1 };
+  const loading = campaignsLoading && campaigns.length === 0;
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    loadCampaigns(1);
+    setSubmittedSearch(search);
+    setPage(1);
+  };
+
+  const invalidateCampaignData = () => {
+    queryClient.invalidateQueries({ queryKey: ['campaigns', siteId] });
+    queryClient.invalidateQueries({ queryKey: ['campaign-stats', siteId] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard', siteId] });
   };
 
   // Create Campaign
   const handleCreate = async (formData) => {
     try {
-      const created = await campaignApi.createCampaign(activeWebsite._id, formData);
-      addToast(`Campaign "${created.name}" created successfully`, 'success');
+      const created = await campaignApi.createCampaign(siteId, formData);
+      addToast(`Campaign "${created.name}" created! Discovering prospects...`, 'success');
       setCreateModalOpen(false);
-      loadStats();
-      loadCampaigns(1);
+      invalidateCampaignData();
+      const campId = created._id || created.id;
+      if (campId) {
+        navigate(`/campaigns/${campId}`);
+      }
     } catch (err) {
       const errorMsg = err?.message || 'Failed to create campaign';
       console.error('[CampaignManagement] createCampaign error:', errorMsg);
@@ -127,19 +124,26 @@ export const CampaignManagementPage = () => {
 
   // Update Campaign
   const handleUpdate = async (arg1, arg2) => {
-    const formData = arg2 || arg1;
-    const campaignId = (arg2 ? arg1 : null) || editingCampaign?._id || editingCampaign?.id;
+    let campaignId;
+    let formData;
+    if (typeof arg1 === 'string') {
+      campaignId = arg1;
+      formData = arg2;
+    } else {
+      formData = arg1;
+      campaignId = arg2 || editingCampaign?._id || editingCampaign?.id;
+    }
     if (!campaignId) return;
     try {
       const updated = await campaignApi.updateCampaign(
-        activeWebsite._id,
+        siteId,
         campaignId,
         formData
       );
       addToast(`Campaign "${updated.name}" updated`, 'success');
       setEditingCampaign(null);
-      loadStats();
-      loadCampaigns(pagination.page);
+      invalidateCampaignData();
+      queryClient.invalidateQueries({ queryKey: ['campaign', siteId, campaignId] });
     } catch (err) {
       const errorMsg = err?.message || 'Failed to update campaign';
       console.error('[CampaignManagement] updateCampaign error:', errorMsg);
@@ -151,10 +155,10 @@ export const CampaignManagementPage = () => {
   // Status Change (pause, resume, archive)
   const handleStatusChange = async (campaignId, newStatus) => {
     try {
-      await campaignApi.updateCampaignStatus(activeWebsite._id, campaignId, newStatus);
+      await campaignApi.updateCampaignStatus(siteId, campaignId, newStatus);
       addToast(`Campaign status updated to ${newStatus}`, 'success');
-      loadStats();
-      loadCampaigns(pagination.page);
+      invalidateCampaignData();
+      queryClient.invalidateQueries({ queryKey: ['campaign', siteId, campaignId] });
     } catch (err) {
       addToast(err?.message || 'Failed to update campaign status', 'error');
     }
@@ -166,10 +170,10 @@ export const CampaignManagementPage = () => {
       return;
     }
     try {
-      await campaignApi.deleteCampaign(activeWebsite._id, campaignId);
+      await campaignApi.deleteCampaign(siteId, campaignId);
       addToast('Campaign deleted successfully', 'success');
-      loadStats();
-      loadCampaigns(pagination.page);
+      invalidateCampaignData();
+      queryClient.removeQueries({ queryKey: ['campaign', siteId, campaignId] });
     } catch (err) {
       addToast(err?.message || 'Failed to delete campaign', 'error');
     }
@@ -364,7 +368,7 @@ export const CampaignManagementPage = () => {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => loadCampaigns(pagination.page - 1)}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={pagination.page <= 1}
               className="px-3 py-1.5 rounded-lg bg-black/40 hover:bg-white/[0.05] disabled:opacity-40 disabled:hover:bg-black/40 text-text-secondary border border-white/[0.08] transition-colors"
             >
@@ -374,7 +378,7 @@ export const CampaignManagementPage = () => {
               Page {pagination.page} of {pagination.totalPages}
             </span>
             <button
-              onClick={() => loadCampaigns(pagination.page + 1)}
+              onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
               disabled={pagination.page >= pagination.totalPages}
               className="px-3 py-1.5 rounded-lg bg-black/40 hover:bg-white/[0.05] disabled:opacity-40 disabled:hover:bg-black/40 text-text-secondary border border-white/[0.08] transition-colors"
             >

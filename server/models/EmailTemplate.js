@@ -58,6 +58,7 @@ emailTemplateSchema.index({ userId: 1, createdAt: -1 });
 emailTemplateSchema.methods.toSafeObject = function () {
   return {
     id: this._id.toString(),
+    _id: this._id.toString(),
     userId: this.userId.toString(),
     websiteId: this.websiteId ? this.websiteId.toString() : null,
     name: this.name,

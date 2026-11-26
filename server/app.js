@@ -15,6 +15,8 @@ import backlinkRoutes from './routes/backlinkRoutes.js';
 import monitoringRoutes from './routes/monitoringRoutes.js';
 import prospectRoutes from './routes/prospectRoutes.js';
 import outreachRoutes from './routes/outreachRoutes.js';
+import assistantRoutes from './routes/assistantRoutes.js';
+import analyticsRoutes from './routes/analyticsRoutes.js';
 import { ensureAuthenticated } from './middleware/authMiddleware.js';
 
 const app = express();
@@ -47,8 +49,9 @@ app.use(
       return callback(null, true);
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+    exposedHeaders: ['Set-Cookie']
   })
 );
 
@@ -116,6 +119,9 @@ app.use('/api/backlinks', ensureAuthenticated, backlinkRoutes);
 app.use('/api/monitoring', ensureAuthenticated, monitoringRoutes);
 app.use('/api/prospects', ensureAuthenticated, prospectRoutes);
 app.use('/api/outreach', outreachRoutes);
+app.use('/api/assistant', ensureAuthenticated, assistantRoutes);
+app.use('/api/analytics', ensureAuthenticated, analyticsRoutes);
+app.use('/api/reports', ensureAuthenticated, analyticsRoutes);
 
 // 404 Handler for undefined API routes
 app.use('/api/*', (req, res) => {

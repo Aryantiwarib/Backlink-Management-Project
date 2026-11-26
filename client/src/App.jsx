@@ -1,5 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './config/queryClient';
 import { ToastProvider } from './context/ToastContext';
 import { AuthProvider } from './context/AuthContext';
 import { WebsiteProvider } from './context/WebsiteContext';
@@ -16,18 +18,20 @@ import { CampaignManagementPage } from './pages/CampaignManagementPage';
 import { CampaignDetailsPage } from './pages/CampaignDetailsPage';
 import { OutreachEmailPage } from './pages/OutreachEmailPage';
 import { SeoToolsPage } from './pages/SeoToolsPage';
+import { AiAssistantPage } from './pages/AiAssistantPage';
 import { ComingSoonPage } from './pages/ComingSoonPage';
 import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
 
 function App() {
   return (
-    <ErrorBoundary>
-      <ToastProvider>
-        <AuthProvider>
-          <WebsiteProvider>
-            <DashboardProvider>
-              <BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <ErrorBoundary>
+        <ToastProvider>
+          <AuthProvider>
+            <WebsiteProvider>
+              <DashboardProvider>
+                <BrowserRouter>
                 <Routes>
                   {/* Public Auth Routes */}
                   <Route path="/login" element={<LoginPage />} />
@@ -50,6 +54,8 @@ function App() {
                       <Route path="backlink-audit" element={<BacklinkMonitoringPage />} />
                       <Route path="monitoring" element={<BacklinkMonitoringPage />} />
                       <Route path="seo-tools" element={<SeoToolsPage />} />
+                      <Route path="assistant" element={<AiAssistantPage />} />
+                      <Route path="ai-assistant" element={<AiAssistantPage />} />
                       <Route path="settings" element={<ComingSoonPage />} />
                     </Route>
                   </Route>
@@ -63,7 +69,8 @@ function App() {
         </AuthProvider>
       </ToastProvider>
     </ErrorBoundary>
-  );
+  </QueryClientProvider>
+);
 }
 
 export default App;

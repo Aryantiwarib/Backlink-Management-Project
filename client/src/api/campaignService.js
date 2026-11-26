@@ -245,6 +245,59 @@ export const campaignApi = {
       throw new Error(data.message || 'Failed to fetch campaign activities');
     }
     return data.activities;
+  },
+
+  /**
+   * Run or re-run automated discovery for a campaign
+   */
+  async runDiscovery(websiteId, campaignId) {
+    const res = await fetch(`${API_BASE}/campaigns/${websiteId}/${campaignId}/discover`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || 'Failed to run campaign discovery');
+    }
+    return data;
+  },
+
+  /**
+   * Run or re-run automated contact discovery for a campaign
+   */
+  async runContactDiscovery(websiteId, campaignId, { forceRetry = false } = {}) {
+    const res = await fetch(`${API_BASE}/campaigns/${websiteId}/${campaignId}/contact-discovery`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      credentials: 'include',
+      body: JSON.stringify({ forceRetry })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || 'Failed to run contact discovery');
+    }
+    return data;
+  },
+
+  /**
+   * Update or manage contact details for an assigned prospect
+   */
+  async updateProspectContact(websiteId, campaignId, assignmentId, contactData) {
+    const res = await fetch(
+      `${API_BASE}/campaigns/${websiteId}/${campaignId}/prospects/${assignmentId}/contact`,
+      {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        credentials: 'include',
+        body: JSON.stringify(contactData)
+      }
+    );
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || 'Failed to update contact info');
+    }
+    return data;
   }
 };
 

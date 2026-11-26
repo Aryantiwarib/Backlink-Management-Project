@@ -54,6 +54,28 @@ export class GmailService {
   }
 
   /**
+   * Resolve Backend Base URL dynamically from environment for open/click tracking.
+   * Priority:
+   * 1. BACKEND_URL (explicit)
+   * 2. SERVER_URL (alias)
+   * 3. VITE_BACKEND_URL (alias)
+   * 4. http://localhost:${PORT} (development default: 5002)
+   */
+  getBackendUrl() {
+    const backendUrl =
+      process.env.BACKEND_URL?.trim() ||
+      process.env.SERVER_URL?.trim() ||
+      process.env.VITE_BACKEND_URL?.trim();
+
+    if (backendUrl) {
+      return backendUrl.replace(/\/+$/, '');
+    }
+
+    const port = process.env.PORT || 5002;
+    return `http://localhost:${port}`;
+  }
+
+  /**
    * Get an unauthenticated OAuth2 client instance configured with credentials
    */
   getOAuth2Client() {
@@ -312,11 +334,13 @@ export class GmailService {
     htmlBody,
     textBody,
     trackingId,
-    trackingBaseUrl = BACKEND_URL,
+    trackingBaseUrl = null,
     threadId = null,
     inReplyTo = null,
     references = null
   }) {
+    const effectiveTrackingUrl = (trackingBaseUrl || this.getBackendUrl()).replace(/\/+$/, '');
+
     const { oauth2Client, account } = await this.getAuthorizedClient(userId);
 
     const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
@@ -332,7 +356,7 @@ export class GmailService {
       htmlBody,
       textBody,
       trackingId,
-      trackingBaseUrl,
+      trackingBaseUrl: effectiveTrackingUrl,
       inReplyTo,
       references
     });

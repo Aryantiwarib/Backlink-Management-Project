@@ -68,6 +68,27 @@ const campaignProspectAssignmentSchema = new mongoose.Schema(
     acquiredAt: {
       type: Date,
       default: null
+    },
+    assignmentSource: {
+      type: String,
+      enum: ['automatic', 'manual'],
+      default: 'manual',
+      index: true
+    },
+    qualificationStatus: {
+      type: String,
+      enum: ['qualified', 'provisional', 'manual'],
+      default: 'qualified',
+      index: true
+    },
+    qualificationReason: {
+      type: String,
+      default: ''
+    },
+    isExcluded: {
+      type: Boolean,
+      default: false,
+      index: true
     }
   },
   {
@@ -82,7 +103,7 @@ campaignProspectAssignmentSchema.index({ campaignId: 1, prospectId: 1 }, { uniqu
 // Compound query indexes for high-speed dashboard, filtering and status aggregation
 campaignProspectAssignmentSchema.index({ websiteId: 1, campaignId: 1, outreachStatus: 1 });
 campaignProspectAssignmentSchema.index({ userId: 1, websiteId: 1, campaignId: 1 });
-campaignProspectAssignmentSchema.index({ campaignId: 1, assignedAt: -1 });
+campaignProspectAssignmentSchema.index({ campaignId: 1, isExcluded: 1, assignedAt: -1 });
 
 // Safe public serialization
 campaignProspectAssignmentSchema.methods.toSafeObject = function () {
@@ -99,6 +120,10 @@ campaignProspectAssignmentSchema.methods.toSafeObject = function () {
     contactedAt: this.contactedAt,
     followUpAt: this.followUpAt,
     acquiredAt: this.acquiredAt,
+    assignmentSource: this.assignmentSource || 'manual',
+    qualificationStatus: this.qualificationStatus || 'qualified',
+    qualificationReason: this.qualificationReason || '',
+    isExcluded: Boolean(this.isExcluded),
     createdAt: this.createdAt,
     updatedAt: this.updatedAt
   };
@@ -107,6 +132,7 @@ campaignProspectAssignmentSchema.methods.toSafeObject = function () {
   if (this.prospectId && typeof this.prospectId === 'object' && this.prospectId.prospectDomain) {
     obj.prospect = {
       id: this.prospectId._id.toString(),
+      _id: this.prospectId._id.toString(),
       prospectDomain: this.prospectId.prospectDomain,
       prospectUrl: this.prospectId.prospectUrl,
       domainAuthority: this.prospectId.domainAuthority,
@@ -116,7 +142,10 @@ campaignProspectAssignmentSchema.methods.toSafeObject = function () {
       opportunityFactors: this.prospectId.opportunityFactors || [],
       globalStatus: this.prospectId.status,
       source: this.prospectId.source,
-      contactEmail: this.prospectId.contactEmail
+      contactEmail: this.prospectId.contactEmail || '',
+      contactEmails: this.prospectId.contactEmails || [],
+      contactStatus: this.prospectId.contactStatus || 'not_searched',
+      notes: this.prospectId.notes || ''
     };
   }
 

@@ -350,7 +350,7 @@ export const SavedProspectsTable = ({
                     <td className="py-3.5 px-4 whitespace-nowrap">
                       <select
                         value={prospect.status}
-                        onChange={(e) => onUpdateStatus(prospect.id, e.target.value)}
+                        onChange={(e) => onUpdateStatus(prospect.id || prospect._id, e.target.value)}
                         className="bg-[#0D1117] border border-white/[0.08] rounded-lg px-2 py-1 text-[11px] font-medium text-text-primary focus:outline-none focus:border-emerald-500 cursor-pointer capitalize"
                       >
                         <option value="saved">Saved</option>
@@ -424,7 +424,7 @@ export const SavedProspectsTable = ({
                         </button>
                         <button
                           type="button"
-                          onClick={() => onDeleteProspect(prospect.id)}
+                          onClick={() => onDeleteProspect(prospect.id || prospect._id)}
                           className="p-1 rounded-lg text-text-muted hover:text-rose-400 hover:bg-white/[0.04] transition-colors"
                           title="Delete prospect"
                         >

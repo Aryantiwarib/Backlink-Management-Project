@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Rocket,
@@ -23,7 +24,8 @@ import {
   Filter,
   Mail,
   Send,
-  Sparkles
+  Sparkles,
+  AlertCircle
 } from 'lucide-react';
 import { useWebsite } from '../context/WebsiteContext';
 import { useToast } from '../context/ToastContext';
@@ -35,6 +37,7 @@ import { CampaignAnalytics } from '../components/campaigns/CampaignAnalytics';
 import { CampaignActivityTimeline } from '../components/campaigns/CampaignActivityTimeline';
 import { CampaignProspectSelectorModal } from '../components/campaigns/CampaignProspectSelectorModal';
 import { EditCampaignModal } from '../components/campaigns/EditCampaignModal';
+import { ContactManagerModal } from '../components/campaigns/ContactManagerModal';
 import { EmailComposerModal } from '../components/outreach/EmailComposerModal';
 import { OutreachQueueTable } from '../components/outreach/OutreachQueueTable';
 import { FollowUpList } from '../components/outreach/FollowUpList';
@@ -43,139 +46,181 @@ import { FollowUpScheduleModal } from '../components/outreach/FollowUpScheduleMo
 export const CampaignDetailsPage = () => {
   const { campaignId } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { activeWebsite } = useWebsite();
   const { addToast } = useToast();
+  const siteId = activeWebsite?._id;
 
-  const [campaign, setCampaign] = useState(null);
-  const [campaignLoading, setCampaignLoading] = useState(true);
-
-  // Assignments & Prospects
-  const [assignments, setAssignments] = useState([]);
-  const [assignmentsPagination, setAssignmentsPagination] = useState({
-    page: 1,
-    limit: 50,
-    total: 0,
-    totalPages: 1
-  });
-  const [assignmentsLoading, setAssignmentsLoading] = useState(false);
+  // Assignments & Prospects Filtering States
+  const [assignmentsPage, setAssignmentsPage] = useState(1);
   const [prospectSearch, setProspectSearch] = useState('');
   const [outreachStatusFilter, setOutreachStatusFilter] = useState('all');
+  const [contactFilter, setContactFilter] = useState('all');
 
-  // Activities
-  const [activities, setActivities] = useState([]);
-  const [activitiesLoading, setActivitiesLoading] = useState(false);
+  // Contact Discovery & Pipeline State
+  const [runningDiscovery, setRunningDiscovery] = useState(false);
+  const [runningContactDiscovery, setRunningContactDiscovery] = useState(false);
+  const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [selectedAssignmentForContact, setSelectedAssignmentForContact] = useState(null);
+  const [composerPreselectedProspects, setComposerPreselectedProspects] = useState([]);
 
   // View & Modals
   const [activeTab, setActiveTab] = useState('prospects'); // 'prospects' | 'kanban' | 'analytics' | 'timeline' | 'outreach'
   const [selectorModalOpen, setSelectorModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
 
-  // Outreach & Emails State (Phase 11)
-  const [outreachEmails, setOutreachEmails] = useState([]);
-  const [outreachLoading, setOutreachLoading] = useState(false);
-  const [outreachStats, setOutreachStats] = useState(null);
+  // Outreach Filter (Phase 11)
   const [outreachFilter, setOutreachFilter] = useState('all');
-  const [accountStatus, setAccountStatus] = useState(null);
-  const [templates, setTemplates] = useState([]);
   const [composerOpen, setComposerOpen] = useState(false);
   const [followUpModalOpen, setFollowUpModalOpen] = useState(false);
   const [selectedAssignmentForFollowUp, setSelectedAssignmentForFollowUp] = useState(null);
   const [followUpRefreshTrigger, setFollowUpRefreshTrigger] = useState(0);
 
-  // Fetch Campaign Details
-  const loadCampaign = useCallback(async () => {
-    if (!activeWebsite?._id || !campaignId) return;
-    setCampaignLoading(true);
-    try {
-      const data = await campaignApi.getCampaignById(activeWebsite._id, campaignId);
-      setCampaign(data);
-    } catch (err) {
-      addToast(err?.message || 'Failed to load campaign', 'error');
-    } finally {
-      setCampaignLoading(false);
-    }
-  }, [activeWebsite?._id, campaignId, addToast]);
-
-  // Fetch Assigned Prospects
-  const loadAssignments = useCallback(
-    async (page = 1) => {
-      if (!activeWebsite?._id || !campaignId) return;
-      setAssignmentsLoading(true);
-      try {
-        const res = await campaignApi.getCampaignProspects(activeWebsite._id, campaignId, {
-          page,
-          limit: 50,
-          search: prospectSearch.trim() || undefined,
-          outreachStatus: outreachStatusFilter
-        });
-        setAssignments(res.assignments || []);
-        if (res.pagination) {
-          setAssignmentsPagination(res.pagination);
-        }
-      } catch (err) {
-        addToast(err?.message || 'Failed to load assigned prospects', 'error');
-      } finally {
-        setAssignmentsLoading(false);
-      }
+  // 1. Campaign Details Query
+  const {
+    data: campaign,
+    isLoading: campaignLoading
+  } = useQuery({
+    queryKey: ['campaign', siteId, campaignId],
+    queryFn: async () => {
+      if (!siteId || !campaignId) return null;
+      return await campaignApi.getCampaignById(siteId, campaignId);
     },
-    [activeWebsite?._id, campaignId, prospectSearch, outreachStatusFilter, addToast]
-  );
+    enabled: !!siteId && !!campaignId,
+    staleTime: 60 * 1000
+  });
 
-  // Fetch Activities
-  const loadActivities = useCallback(async () => {
-    if (!activeWebsite?._id || !campaignId) return;
-    setActivitiesLoading(true);
-    try {
-      const acts = await campaignApi.getCampaignActivities(activeWebsite._id, campaignId, {
-        limit: 50
+  // 2. Assigned Prospects Query
+  const {
+    data: assignmentsResponse,
+    isLoading: assignmentsLoading
+  } = useQuery({
+    queryKey: ['campaign-assignments', siteId, campaignId, { page: assignmentsPage, search: prospectSearch.trim(), outreachStatus: outreachStatusFilter, contactFilter }],
+    queryFn: async () => {
+      if (!siteId || !campaignId) return { assignments: [], pagination: null, stats: null };
+      return await campaignApi.getCampaignProspects(siteId, campaignId, {
+        page: assignmentsPage,
+        limit: 50,
+        search: prospectSearch.trim() || undefined,
+        outreachStatus: outreachStatusFilter,
+        contactFilter
       });
-      setActivities(acts || []);
-    } catch (err) {
-      console.error('Failed to load activities:', err);
-    } finally {
-      setActivitiesLoading(false);
-    }
-  }, [activeWebsite?._id, campaignId]);
+    },
+    enabled: !!siteId && !!campaignId,
+    placeholderData: (prev) => prev,
+    staleTime: 60 * 1000
+  });
 
-  // Load Outreach Data (Phase 11)
-  const loadOutreachData = useCallback(async () => {
-    if (!activeWebsite?._id || !campaignId) return;
-    setOutreachLoading(true);
-    try {
-      const [acc, tpls, queueData, historyData] = await Promise.all([
-        outreachApi.getAccountStatus().catch(() => null),
-        outreachApi.listTemplates().catch(() => []),
-        outreachApi.getQueue(activeWebsite._id, campaignId, {
-          status: outreachFilter !== 'all' ? outreachFilter : undefined
-        }).catch(() => ({ emails: [] })),
-        outreachApi.getHistory(activeWebsite._id, campaignId).catch(() => ({ stats: null }))
-      ]);
+  const assignments = assignmentsResponse?.assignments || [];
+  const assignmentsPagination = assignmentsResponse?.pagination || {
+    page: assignmentsPage,
+    limit: 50,
+    total: 0,
+    totalPages: 1
+  };
+  const contactStats = assignmentsResponse?.stats || {
+    total: 0,
+    emailAvailable: 0,
+    noEmail: 0,
+    contactPending: 0,
+    contactFailed: 0,
+    highOpportunity: 0
+  };
 
-      if (acc) setAccountStatus(acc);
-      if (tpls) setTemplates(tpls);
-      setOutreachEmails(queueData?.emails || []);
-      setOutreachStats(historyData?.stats || null);
-    } catch (err) {
-      console.error('Failed to load outreach data:', err);
-    } finally {
-      setOutreachLoading(false);
-    }
-  }, [activeWebsite?._id, campaignId, outreachFilter]);
+  // 3. Campaign Activities Query
+  const {
+    data: activitiesData,
+    isLoading: activitiesLoading
+  } = useQuery({
+    queryKey: ['campaign-activities', siteId, campaignId],
+    queryFn: async () => {
+      if (!siteId || !campaignId) return [];
+      const acts = await campaignApi.getCampaignActivities(siteId, campaignId, { limit: 50 });
+      return acts || [];
+    },
+    enabled: !!siteId && !!campaignId,
+    staleTime: 60 * 1000
+  });
+  const activities = activitiesData || [];
 
-  useEffect(() => {
-    if (activeWebsite?._id && campaignId && activeTab === 'outreach') {
-      loadOutreachData();
-    }
-  }, [activeWebsite?._id, campaignId, activeTab, outreachFilter, loadOutreachData]);
+  // 4. Outreach Account Status Query
+  const { data: accountStatus } = useQuery({
+    queryKey: ['outreach-account'],
+    queryFn: async () => {
+      return await outreachApi.getAccountStatus().catch(() => null);
+    },
+    staleTime: 2 * 60 * 1000
+  });
+
+  // 5. Outreach Templates Query
+  const { data: templatesData } = useQuery({
+    queryKey: ['outreach-templates'],
+    queryFn: async () => {
+      return await outreachApi.listTemplates().catch(() => []);
+    },
+    staleTime: 5 * 60 * 1000
+  });
+  const templates = templatesData || [];
+
+  // 6. Outreach Queue Query
+  const {
+    data: outreachQueueData,
+    isLoading: outreachLoading
+  } = useQuery({
+    queryKey: ['outreach-queue', siteId, campaignId, outreachFilter],
+    queryFn: async () => {
+      if (!siteId || !campaignId) return { emails: [] };
+      return await outreachApi.getQueue(siteId, campaignId, {
+        status: outreachFilter !== 'all' ? outreachFilter : undefined
+      }).catch(() => ({ emails: [] }));
+    },
+    enabled: !!siteId && !!campaignId && activeTab === 'outreach',
+    staleTime: 30 * 1000
+  });
+  const outreachEmails = outreachQueueData?.emails || [];
+
+  // 7. Outreach History / Stats Query
+  const { data: outreachHistoryData } = useQuery({
+    queryKey: ['outreach-history', siteId, campaignId],
+    queryFn: async () => {
+      if (!siteId || !campaignId) return { stats: null };
+      return await outreachApi.getHistory(siteId, campaignId).catch(() => ({ stats: null }));
+    },
+    enabled: !!siteId && !!campaignId && activeTab === 'outreach',
+    staleTime: 30 * 1000
+  });
+  const outreachStats = outreachHistoryData?.stats || null;
+
+  // Invalidate Helpers
+  const invalidateCampaignData = useCallback(async () => {
+    if (!siteId || !campaignId) return;
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['campaign', siteId, campaignId] }),
+      queryClient.invalidateQueries({ queryKey: ['campaign-assignments', siteId, campaignId] }),
+      queryClient.invalidateQueries({ queryKey: ['campaign-activities', siteId, campaignId] }),
+      queryClient.invalidateQueries({ queryKey: ['campaigns', siteId] }),
+      queryClient.invalidateQueries({ queryKey: ['campaign-stats', siteId] }),
+      queryClient.invalidateQueries({ queryKey: ['dashboard', siteId] })
+    ]);
+  }, [queryClient, siteId, campaignId]);
+
+  const invalidateOutreachData = useCallback(async () => {
+    if (!siteId || !campaignId) return;
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['outreach-queue', siteId, campaignId] }),
+      queryClient.invalidateQueries({ queryKey: ['outreach-history', siteId, campaignId] })
+    ]);
+  }, [queryClient, siteId, campaignId]);
 
   // Handle Send Outreach
   const handleSendOutreach = async (payload) => {
     try {
       const res = await outreachApi.sendOutreach(activeWebsite._id, campaignId, payload);
       addToast(res.message || 'Outreach emails queued successfully!', 'success');
-      loadOutreachData();
-      loadAssignments(assignmentsPagination.page);
-      loadActivities();
+      await Promise.all([
+        invalidateOutreachData(),
+        invalidateCampaignData()
+      ]);
     } catch (err) {
       addToast(err?.message || 'Failed to queue outreach', 'error');
       throw err;
@@ -187,25 +232,127 @@ export const CampaignDetailsPage = () => {
     return outreachApi.previewOutreach(activeWebsite._id, campaignId, payload);
   };
 
+  // Polling for active discovery / contact discovery progress
   useEffect(() => {
-    if (activeWebsite?._id && campaignId) {
-      loadCampaign();
-      loadAssignments(1);
-      loadActivities();
+    const isDiscoveryActive =
+      campaign?.discoveryStatus === 'discovering' ||
+      campaign?.discoveryStatus === 'enriching' ||
+      campaign?.discoveryStatus === 'filtering' ||
+      campaign?.discoveryStatus === 'assigning';
+
+    const isContactActive =
+      campaign?.discoverySummary?.contactDiscoveryProgress?.status === 'running' ||
+      runningContactDiscovery;
+
+    if (isDiscoveryActive || isContactActive) {
+      const interval = setInterval(() => {
+        invalidateCampaignData();
+      }, 2500);
+      return () => clearInterval(interval);
     }
-  }, [activeWebsite?._id, campaignId, outreachStatusFilter, loadCampaign, loadAssignments, loadActivities]);
+  }, [
+    campaign?.discoveryStatus,
+    campaign?.discoverySummary?.contactDiscoveryProgress?.status,
+    runningContactDiscovery,
+    invalidateCampaignData
+  ]);
+
+  // Rerun Automated Discovery
+  const handleRunDiscoveryAgain = async () => {
+    setRunningDiscovery(true);
+    try {
+      addToast('Running automated discovery and qualification...', 'info');
+      await campaignApi.runDiscovery(activeWebsite._id, campaignId);
+      addToast('Discovery completed successfully!', 'success');
+      await invalidateCampaignData();
+    } catch (err) {
+      addToast(err?.message || 'Discovery failed', 'error');
+    } finally {
+      setRunningDiscovery(false);
+    }
+  };
+
+  // Run or Retry Contact Discovery
+  const handleRunContactDiscovery = async ({ forceRetry = false } = {}) => {
+    setRunningContactDiscovery(true);
+    try {
+      addToast(forceRetry ? 'Retrying contact email discovery...' : 'Initiating contact email discovery...', 'info');
+      const res = await campaignApi.runContactDiscovery(activeWebsite._id, campaignId, { forceRetry });
+      if (res?.status === 'no_prospects') {
+        addToast(res.message || 'No prospects are currently assigned to this campaign.', 'warning');
+      } else {
+        addToast(res?.message || 'Contact discovery in progress.', 'success');
+      }
+      await invalidateCampaignData();
+    } catch (err) {
+      addToast(err?.message || 'Contact discovery could not start', 'error');
+    } finally {
+      setRunningContactDiscovery(false);
+    }
+  };
+
+  // Update Prospect Contact Emails
+  const handleUpdateProspectContact = async (assignmentId, contactData) => {
+    try {
+      const res = await campaignApi.updateProspectContact(activeWebsite._id, campaignId, assignmentId, contactData);
+      addToast('Contact details updated successfully', 'success');
+      setSelectedAssignmentForContact((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          prospect: {
+            ...prev.prospect,
+            contactEmail: res.contactEmail,
+            contactEmails: res.contactEmails,
+            contactStatus: res.contactStatus
+          }
+        };
+      });
+      await invalidateCampaignData();
+    } catch (err) {
+      addToast(err?.message || 'Failed to update contact info', 'error');
+      throw err;
+    }
+  };
+
+  // Send Outreach from Selected Prospects in Table
+  const handleSendOutreachFromTable = (selectedList) => {
+    if (!selectedList || selectedList.length === 0) {
+      addToast('Please select at least one prospect to send outreach.', 'warning');
+      return;
+    }
+
+    const eligible = selectedList.filter((a) => {
+      const p = a.prospect || a.prospectId || a;
+      return Boolean(p.contactEmail || (Array.isArray(p.contactEmails) && p.contactEmails.length > 0));
+    });
+
+    if (eligible.length === 0) {
+      addToast('None of the selected prospects have a discovered contact email address.', 'warning');
+      return;
+    }
+
+    if (eligible.length < selectedList.length) {
+      addToast(
+        `Selected ${eligible.length} prospects with valid contact emails (${selectedList.length - eligible.length} without emails skipped).`,
+        'info'
+      );
+    }
+
+    setComposerPreselectedProspects(eligible);
+    setComposerOpen(true);
+  };
 
   // Status transition (active, paused, completed, archived)
   const handleStatusChange = async (newStatus) => {
     try {
-      const updated = await campaignApi.updateCampaignStatus(
+      await campaignApi.updateCampaignStatus(
         activeWebsite._id,
         campaignId,
         newStatus
       );
-      setCampaign(updated);
       addToast(`Campaign transitioned to ${newStatus}`, 'success');
-      loadActivities();
+      await invalidateCampaignData();
     } catch (err) {
       addToast(err?.message || 'Failed to update campaign status', 'error');
     }
@@ -245,9 +392,7 @@ export const CampaignDetailsPage = () => {
       });
       addToast(res.message || `Assigned ${cleanedIds.length} prospects to campaign`, 'success');
       setSelectorModalOpen(false);
-      loadCampaign();
-      loadAssignments(1);
-      loadActivities();
+      await invalidateCampaignData();
     } catch (err) {
       addToast(err?.message || 'Failed to assign prospects', 'error');
       throw err;
@@ -261,9 +406,7 @@ export const CampaignDetailsPage = () => {
         outreachStatus
       });
       addToast(`Status updated to ${outreachStatus.replace('_', ' ')}`, 'success');
-      loadCampaign();
-      loadAssignments(assignmentsPagination.page);
-      loadActivities();
+      await invalidateCampaignData();
     } catch (err) {
       addToast(err?.message || 'Failed to update outreach status', 'error');
     }
@@ -279,9 +422,7 @@ export const CampaignDetailsPage = () => {
         updateData
       );
       addToast('Assignment details updated', 'success');
-      loadCampaign();
-      loadAssignments(assignmentsPagination.page);
-      loadActivities();
+      await invalidateCampaignData();
     } catch (err) {
       addToast(err?.message || 'Failed to save changes', 'error');
       throw err;
@@ -296,9 +437,7 @@ export const CampaignDetailsPage = () => {
         outreachStatus
       });
       addToast(`Updated ${assignmentIds.length} prospects to ${outreachStatus.replace('_', ' ')}`, 'success');
-      loadCampaign();
-      loadAssignments(assignmentsPagination.page);
-      loadActivities();
+      await invalidateCampaignData();
     } catch (err) {
       addToast(err?.message || 'Failed to bulk update status', 'error');
     }
@@ -312,9 +451,7 @@ export const CampaignDetailsPage = () => {
     try {
       await campaignApi.removeAssignment(activeWebsite._id, campaignId, assignmentId);
       addToast('Prospect removed from campaign', 'success');
-      loadCampaign();
-      loadAssignments(assignmentsPagination.page);
-      loadActivities();
+      await invalidateCampaignData();
     } catch (err) {
       addToast(err?.message || 'Failed to remove prospect', 'error');
     }
@@ -323,11 +460,10 @@ export const CampaignDetailsPage = () => {
   // Update Campaign Settings
   const handleCampaignUpdate = async (formData) => {
     try {
-      const updated = await campaignApi.updateCampaign(activeWebsite._id, campaignId, formData);
-      setCampaign(updated);
+      await campaignApi.updateCampaign(activeWebsite._id, campaignId, formData);
       addToast('Campaign settings updated', 'success');
       setEditModalOpen(false);
-      loadActivities();
+      await invalidateCampaignData();
     } catch (err) {
       addToast(err?.message || 'Failed to update campaign', 'error');
       throw err;
@@ -508,6 +644,224 @@ export const CampaignDetailsPage = () => {
         </div>
       </div>
 
+      {/* Automated Discovery Progress & Sources Summary Banner */}
+      {campaign && (
+        <div className="p-5 rounded-3xl bg-[#15191E] border border-white/[0.08] space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div
+                className={`p-2 rounded-xl border ${
+                  campaign.discoveryStatus === 'discovering' ||
+                  campaign.discoveryStatus === 'enriching' ||
+                  campaign.discoveryStatus === 'filtering' ||
+                  campaign.discoveryStatus === 'assigning'
+                    ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                    : campaign.discoveryStatus === 'completed_with_warnings'
+                    ? 'bg-teal-500/10 text-teal-400 border-teal-500/20'
+                    : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                }`}
+              >
+                <Sparkles
+                  className={`w-4 h-4 ${
+                    ['discovering', 'enriching', 'filtering', 'assigning'].includes(
+                      campaign.discoveryStatus
+                    )
+                      ? 'animate-spin'
+                      : ''
+                  }`}
+                />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-text-primary">
+                    Automated Discovery Pipeline
+                  </h3>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase border ${
+                      campaign.discoveryStatus === 'completed'
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                        : campaign.discoveryStatus === 'completed_with_warnings'
+                        ? 'bg-teal-500/10 text-teal-400 border-teal-500/20'
+                        : ['discovering', 'enriching', 'filtering', 'assigning'].includes(
+                            campaign.discoveryStatus
+                          )
+                        ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 animate-pulse'
+                        : 'bg-white/[0.04] text-text-muted border-white/[0.08]'
+                    }`}
+                  >
+                    {String(campaign.discoveryStatus || 'pending').replace('_', ' ')}
+                  </span>
+                </div>
+                <p className="text-xs text-text-muted">
+                  Niche: <strong className="text-text-secondary">{campaign.niche || 'General'}</strong>
+                  {campaign.primaryKeywords?.length > 0 &&
+                    ` • Keywords: ${campaign.primaryKeywords.join(', ')}`}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleRunContactDiscovery}
+                disabled={
+                  runningContactDiscovery ||
+                  campaign.discoverySummary?.contactDiscoveryProgress?.status === 'running'
+                }
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-text-secondary hover:text-white border border-white/[0.08] text-xs font-medium transition-colors disabled:opacity-50"
+                title="Crawl prospect websites & extract contact emails"
+              >
+                <Mail className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Find Contact Emails</span>
+              </button>
+
+              <button
+                onClick={handleRunDiscoveryAgain}
+                disabled={
+                  runningDiscovery ||
+                  ['discovering', 'enriching', 'filtering', 'assigning'].includes(
+                    campaign.discoveryStatus
+                  )
+                }
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-medium transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${runningDiscovery ? 'animate-spin' : ''}`} />
+                <span>Rerun Discovery</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Contact Discovery Progress & Status Alerts */}
+          {campaign.discoverySummary?.contactDiscoveryProgress?.status === 'running' && (
+            <div className="p-3.5 rounded-2xl bg-black/40 border border-emerald-500/20 space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
+                <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
+                  <RefreshCw className="w-3 h-3 animate-spin" />
+                  <span>Searching & Extracting Public Contact Emails...</span>
+                </span>
+                <span className="text-text-muted font-mono">
+                  Processed {campaign.discoverySummary.contactDiscoveryProgress.processed || 0} /{' '}
+                  {campaign.discoverySummary.contactDiscoveryProgress.total || 0} websites ({campaign.discoverySummary?.contactEmailsFoundCount || 0} emails found)
+                </span>
+              </div>
+              <div className="w-full h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                <div
+                  className="h-full bg-emerald-400 rounded-full transition-all duration-300"
+                  style={{
+                    width: `${Math.round(
+                      ((campaign.discoverySummary.contactDiscoveryProgress.processed || 0) /
+                        (campaign.discoverySummary.contactDiscoveryProgress.total || 1)) *
+                        100
+                    )}%`
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {campaign.discoverySummary?.contactDiscoveryProgress?.status === 'failed' && (
+            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2 text-rose-300">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                <span>
+                  <strong>Contact discovery stopped:</strong>{' '}
+                  {campaign.discoverySummary.contactDiscoveryProgress.error ||
+                    'Web crawl or search fallback was interrupted.'}
+                </span>
+              </div>
+              <button
+                onClick={() => handleRunContactDiscovery({ forceRetry: true })}
+                disabled={runningContactDiscovery}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-500/30 font-medium transition-colors shrink-0"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${runningContactDiscovery ? 'animate-spin' : ''}`} />
+                <span>Retry Contact Discovery</span>
+              </button>
+            </div>
+          )}
+
+          {/* Discovery Metrics Cards Grid: 8 Separate Metric Counts */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 pt-2 border-t border-white/[0.06] text-center text-xs">
+            <div className="p-2.5 rounded-xl bg-black/20 border border-white/[0.04]">
+              <span className="text-text-muted text-[10px] block">Raw Discovered</span>
+              <span className="text-sm font-bold text-text-primary">
+                {campaign.discoverySummary?.totalDiscovered || 0}
+              </span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-black/20 border border-white/[0.04]">
+              <span className="text-text-muted text-[10px] block">Unique Domains</span>
+              <span className="text-sm font-bold text-text-primary">
+                {campaign.discoverySummary?.uniqueDomainsCount || 0}
+              </span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-black/20 border border-white/[0.04]">
+              <span className="text-text-muted text-[10px] block">Enriched (SEO)</span>
+              <span className="text-sm font-bold text-teal-400">
+                {campaign.discoverySummary?.enrichmentSuccessCount || 0}
+              </span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-black/20 border border-white/[0.04]">
+              <span className="text-text-muted text-[10px] block">
+                Qualified (DA Assessed)
+              </span>
+              <span className="text-sm font-bold text-emerald-400 font-mono">
+                {Math.max(
+                  0,
+                  (campaign.discoverySummary?.qualifiedCount || 0) -
+                    (campaign.discoverySummary?.provisionalCount || 0)
+                )}
+              </span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-black/20 border border-white/[0.04]">
+              <span className="text-text-muted text-[10px] block">
+                Provisional (Unassessed DA)
+              </span>
+              <span className="text-sm font-bold text-cyan-400 font-mono">
+                {campaign.discoverySummary?.provisionalCount ||
+                  (campaign.discoverySummary?.enrichmentSuccessCount === 0 &&
+                  (campaign.discoverySummary?.qualifiedCount || 0) > 0
+                    ? campaign.discoverySummary?.qualifiedCount
+                    : 0)}
+              </span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-black/20 border border-white/[0.04]">
+              <span className="text-text-muted text-[10px] block">Rejected</span>
+              <span className="text-sm font-bold text-amber-400 font-mono">
+                {campaign.discoverySummary?.rejectedCount || 0}
+              </span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-black/20 border border-white/[0.04]">
+              <span className="text-text-muted text-[10px] block">Assigned</span>
+              <span className="text-sm font-bold text-emerald-400 font-mono">
+                {campaign.discoverySummary?.assignedCount || assignments.length}
+              </span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-black/20 border border-white/[0.04]">
+              <span className="text-text-muted text-[10px] block">Emails Found</span>
+              <span className="text-sm font-bold text-teal-400 font-mono">
+                {contactStats.emailAvailable ||
+                  campaign.discoverySummary?.contactEmailsFoundCount ||
+                  0}
+              </span>
+            </div>
+          </div>
+
+          {/* Warnings list if any provider had a partial issue */}
+          {campaign.discoverySummary?.warnings?.length > 0 && (
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs space-y-1">
+              <span className="font-semibold block flex items-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                Discovery Source Alerts:
+              </span>
+              {campaign.discoverySummary.warnings.map((w, i) => (
+                <p key={i} className="text-[11px] text-amber-200/80">
+                  • [{w.source?.toUpperCase()}] {w.message}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Navigation Tabs Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.08] pb-3">
         <div className="flex items-center gap-2">
@@ -606,6 +960,68 @@ export const CampaignDetailsPage = () => {
       {/* Tab 1: Prospects Table */}
       {activeTab === 'prospects' && (
         <div className="space-y-4">
+          {/* Section 11: Contact Availability & Strategy Filter Tabs */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-[#101419] border border-white/[0.06]">
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              {[
+                { id: 'all', label: 'All Prospects', count: contactStats.total },
+                {
+                  id: 'email_available',
+                  label: 'Email Available',
+                  count: contactStats.emailAvailable,
+                  highlight: true
+                },
+                { id: 'no_email', label: 'No Email Found', count: contactStats.noEmail },
+                {
+                  id: 'high_opportunity',
+                  label: 'High Opportunity (70+)',
+                  count: contactStats.highOpportunity
+                },
+                {
+                  id: 'contact_pending',
+                  label: 'Discovery Pending',
+                  count: contactStats.contactPending
+                }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setContactFilter(tab.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-medium transition-all ${
+                    contactFilter === tab.id
+                      ? tab.highlight
+                        ? 'bg-emerald-500 text-white font-semibold shadow-md shadow-emerald-500/20'
+                        : 'bg-white/[0.08] text-white font-semibold'
+                      : 'text-text-muted hover:text-text-primary hover:bg-white/[0.02]'
+                  }`}
+                >
+                  {tab.id === 'email_available' && <Mail className="w-3.5 h-3.5" />}
+                  <span>{tab.label}</span>
+                  <span
+                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                      contactFilter === tab.id
+                        ? 'bg-black/30 text-white'
+                        : 'bg-white/[0.04] text-text-muted'
+                    }`}
+                  >
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Search Input */}
+            <div className="relative w-full sm:w-64">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+              <input
+                type="text"
+                placeholder="Search domain, URL, or email..."
+                value={prospectSearch}
+                onChange={(e) => setProspectSearch(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-[#0D1117] border border-white/[0.08] text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-emerald-500/50"
+              />
+            </div>
+          </div>
+
           <CampaignProspectTable
             assignments={assignments}
             loading={assignmentsLoading}
@@ -614,6 +1030,13 @@ export const CampaignDetailsPage = () => {
             onRemoveAssignment={handleRemoveAssignment}
             onBulkUpdateStatus={handleBulkUpdateStatus}
             onOpenProspectSelector={() => setSelectorModalOpen(true)}
+            onOpenContactManager={(assignment) => {
+              setSelectedAssignmentForContact(assignment);
+              setContactModalOpen(true);
+            }}
+            onSendOutreach={handleSendOutreachFromTable}
+            onRerunDiscovery={handleRunDiscoveryAgain}
+            onEditCriteria={() => setEditModalOpen(true)}
           />
 
           {/* Prospects Pagination */}
@@ -625,7 +1048,7 @@ export const CampaignDetailsPage = () => {
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => loadAssignments(assignmentsPagination.page - 1)}
+                  onClick={() => setAssignmentsPage((p) => Math.max(1, p - 1))}
                   disabled={assignmentsPagination.page <= 1}
                   className="px-3 py-1.5 rounded-lg bg-black/40 hover:bg-white/[0.05] disabled:opacity-40 text-text-secondary border border-white/[0.08]"
                 >
@@ -635,7 +1058,7 @@ export const CampaignDetailsPage = () => {
                   Page {assignmentsPagination.page} of {assignmentsPagination.totalPages}
                 </span>
                 <button
-                  onClick={() => loadAssignments(assignmentsPagination.page + 1)}
+                  onClick={() => setAssignmentsPage((p) => p + 1)}
                   disabled={assignmentsPagination.page >= assignmentsPagination.totalPages}
                   className="px-3 py-1.5 rounded-lg bg-black/40 hover:bg-white/[0.05] disabled:opacity-40 text-text-secondary border border-white/[0.08]"
                 >
@@ -697,7 +1120,7 @@ export const CampaignDetailsPage = () => {
             loading={outreachLoading}
             statusFilter={outreachFilter}
             onStatusFilterChange={setOutreachFilter}
-            onRefresh={loadOutreachData}
+            onRefresh={invalidateOutreachData}
           />
 
           {/* Scheduled Follow-ups for this Campaign */}
@@ -735,13 +1158,33 @@ export const CampaignDetailsPage = () => {
       {composerOpen && (
         <EmailComposerModal
           isOpen={composerOpen}
-          onClose={() => setComposerOpen(false)}
+          onClose={() => {
+            setComposerOpen(false);
+            setComposerPreselectedProspects([]);
+          }}
           campaign={campaign}
-          prospects={assignments}
+          prospects={
+            composerPreselectedProspects.length > 0
+              ? composerPreselectedProspects
+              : assignments
+          }
           templates={templates}
           connectedAccount={accountStatus}
           onSend={handleSendOutreach}
           onPreview={handlePreviewOutreach}
+        />
+      )}
+
+      {/* Modal: Prospect Contact Information Manager */}
+      {contactModalOpen && selectedAssignmentForContact && (
+        <ContactManagerModal
+          isOpen={contactModalOpen}
+          onClose={() => {
+            setContactModalOpen(false);
+            setSelectedAssignmentForContact(null);
+          }}
+          assignment={selectedAssignmentForContact}
+          onUpdateContact={handleUpdateProspectContact}
         />
       )}
 
@@ -759,7 +1202,7 @@ export const CampaignDetailsPage = () => {
           templates={templates}
           onScheduled={() => {
             setFollowUpRefreshTrigger((prev) => prev + 1);
-            loadOutreachData();
+            invalidateOutreachData();
           }}
         />
       )}

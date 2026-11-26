@@ -10,7 +10,9 @@ import {
   Edit2,
   Check,
   Mail,
-  AlertCircle
+  AlertCircle,
+  Plus,
+  Send
 } from 'lucide-react';
 
 const OUTREACH_OPTIONS = [
@@ -31,14 +33,20 @@ export const CampaignProspectTable = ({
   onUpdateAssignment,
   onRemoveAssignment,
   onBulkUpdateStatus,
-  onOpenProspectSelector
+  onOpenProspectSelector,
+  onOpenContactManager,
+  onSendOutreach,
+  onRerunDiscovery,
+  onEditCriteria
 }) => {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [editingAssignment, setEditingAssignment] = useState(null);
   const [editNotes, setEditNotes] = useState('');
+  const [editProspectNotes, setEditProspectNotes] = useState('');
   const [editFollowUp, setEditFollowUp] = useState('');
   const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState('');
 
   const getAssignmentId = (a) => String(a?._id || a?.id || a || '');
 
@@ -73,20 +81,28 @@ export const CampaignProspectTable = ({
   const startEdit = (assignment) => {
     setEditingAssignment(assignment);
     setEditNotes(assignment.notes || '');
+    setEditProspectNotes(assignment.prospect?.notes || '');
     setEditFollowUp(
       assignment.followUpAt ? new Date(assignment.followUpAt).toISOString().split('T')[0] : ''
     );
+    setEditError('');
   };
 
   const handleSaveEdit = async () => {
     if (!editingAssignment) return;
+    const assignmentId = editingAssignment.id || editingAssignment._id;
+    if (!assignmentId) return;
     setSavingEdit(true);
+    setEditError('');
     try {
-      await onUpdateAssignment(editingAssignment.id, {
+      await onUpdateAssignment(assignmentId, {
         notes: editNotes,
+        prospectNotes: editProspectNotes,
         followUpAt: editFollowUp ? new Date(editFollowUp) : null
       });
       setEditingAssignment(null);
+    } catch (err) {
+      setEditError(err?.message || 'Failed to save notes');
     } finally {
       setSavingEdit(false);
     }
@@ -148,14 +164,37 @@ export const CampaignProspectTable = ({
         </div>
         <h4 className="text-sm font-semibold text-text-primary">No Prospects Assigned Yet</h4>
         <p className="text-xs text-text-muted max-w-md mx-auto leading-relaxed">
-          Select vetted link candidates from your Phase 9 Saved Prospects Pipeline to begin outreach and track link acquisitions.
+          No qualified prospects have been assigned yet. Review your discovery criteria or run discovery again.
         </p>
-        <button
-          onClick={onOpenProspectSelector}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-semibold text-xs shadow-md shadow-emerald-500/20 transition-all"
-        >
-          <span>Select Prospects from Pipeline</span>
-        </button>
+        <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2">
+          {onRerunDiscovery && (
+            <button
+              type="button"
+              onClick={onRerunDiscovery}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-semibold text-xs shadow-md shadow-emerald-500/20 transition-all"
+            >
+              <span>Rerun Discovery</span>
+            </button>
+          )}
+          {onEditCriteria && (
+            <button
+              type="button"
+              onClick={onEditCriteria}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-text-secondary hover:text-white border border-white/[0.08] text-xs font-medium transition-colors"
+            >
+              <span>Review Criteria</span>
+            </button>
+          )}
+          {onOpenProspectSelector && (
+            <button
+              type="button"
+              onClick={onOpenProspectSelector}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/[0.02] hover:bg-white/[0.06] text-text-muted hover:text-text-secondary border border-white/[0.06] text-xs transition-colors"
+            >
+              <span>Assign Saved Prospects Manually</span>
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -170,6 +209,22 @@ export const CampaignProspectTable = ({
           </span>
 
           <div className="flex items-center gap-2">
+            {onSendOutreach && (
+              <button
+                type="button"
+                onClick={() => {
+                  const selectedList = assignments.filter((a) =>
+                    selectedIds.has(getAssignmentId(a))
+                  );
+                  onSendOutreach(selectedList);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-xs shadow-md shadow-emerald-500/20 transition-all"
+              >
+                <Mail className="w-3.5 h-3.5" />
+                <span>Send Outreach via Gmail</span>
+              </button>
+            )}
+
             <div className="relative">
               <button
                 onClick={() => setBulkStatusOpen(!bulkStatusOpen)}
@@ -272,13 +327,25 @@ export const CampaignProspectTable = ({
                     </div>
                   </td>
 
-                  {/* Score & DA */}
+                  {/* Score & DA / Qualification Status */}
                   <td className="py-3.5 px-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       {getScoreBadge(prospect.opportunityScore)}
-                      <span className="font-mono text-text-secondary font-medium">
-                        {prospect.domainAuthority !== null ? `DA ${prospect.domainAuthority}` : 'N/A'}
-                      </span>
+                      {prospect.domainAuthority !== null ? (
+                        <span
+                          className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold"
+                          title={`Qualified: Domain Authority ${prospect.domainAuthority}`}
+                        >
+                          DA {prospect.domainAuthority}
+                        </span>
+                      ) : (
+                        <span
+                          className="px-1.5 py-0.5 rounded text-[10px] font-sans bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-medium"
+                          title="Provisional qualification: Topical search match verified; SEO provider DA unassessed"
+                        >
+                          Provisional (DA Unassessed)
+                        </span>
+                      )}
                     </div>
                   </td>
 
@@ -301,20 +368,37 @@ export const CampaignProspectTable = ({
 
                   {/* Contact / Follow-up info */}
                   <td className="py-3.5 px-4 whitespace-nowrap text-[11px] text-text-muted">
-                    {prospect.contactEmail && (
-                      <div className="flex items-center gap-1 text-text-secondary mb-0.5">
-                        <Mail className="w-3 h-3 text-emerald-400" />
-                        <span>{prospect.contactEmail}</span>
-                      </div>
+                    {prospect.contactEmail ? (
+                      <button
+                        type="button"
+                        onClick={() => onOpenContactManager && onOpenContactManager(assignment)}
+                        className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300 font-mono hover:underline mb-0.5 text-left"
+                        title="Click to view and manage contact emails"
+                      >
+                        <Mail className="w-3 h-3 text-emerald-400 shrink-0" />
+                        <span className="truncate max-w-[140px]">{prospect.contactEmail}</span>
+                        {Array.isArray(prospect.contactEmails) && prospect.contactEmails.length > 1 && (
+                          <span className="px-1 py-0.2 rounded-full text-[9px] bg-emerald-500/20 text-emerald-300 font-sans font-bold">
+                            +{prospect.contactEmails.length - 1}
+                          </span>
+                        )}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onOpenContactManager && onOpenContactManager(assignment)}
+                        className="text-[11px] text-text-muted hover:text-emerald-400 flex items-center gap-1 mb-0.5 transition-colors"
+                        title="Add contact email"
+                      >
+                        <Plus className="w-2.5 h-2.5" />
+                        <span>Add email</span>
+                      </button>
                     )}
                     {assignment.followUpAt && (
                       <div className="flex items-center gap-1 text-amber-300">
                         <Calendar className="w-3 h-3" />
                         <span>Due {new Date(assignment.followUpAt).toLocaleDateString()}</span>
                       </div>
-                    )}
-                    {!prospect.contactEmail && !assignment.followUpAt && (
-                      <span className="text-text-muted">—</span>
                     )}
                   </td>
 
@@ -353,7 +437,7 @@ export const CampaignProspectTable = ({
                       <button
                         onClick={() =>
                           onRemoveAssignment(
-                            assignment.id,
+                            assignment.id || assignment._id,
                             prospect.prospectDomain || 'prospect'
                           )
                         }
@@ -380,7 +464,7 @@ export const CampaignProspectTable = ({
                 <h4 className="font-bold text-text-primary">
                   {editingAssignment.prospect?.prospectDomain}
                 </h4>
-                <p className="text-[11px] text-text-muted">Campaign Outreach Details</p>
+                <p className="text-[11px] text-text-muted">Campaign Outreach Details & Notes</p>
               </div>
               <button
                 onClick={() => setEditingAssignment(null)}
@@ -389,6 +473,12 @@ export const CampaignProspectTable = ({
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {editError && (
+              <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs">
+                {editError}
+              </div>
+            )}
 
             <div className="space-y-3">
               <div>
@@ -405,13 +495,26 @@ export const CampaignProspectTable = ({
 
               <div>
                 <label className="text-[11px] font-semibold text-text-muted block mb-1">
-                  Campaign Outreach Notes
+                  Campaign Outreach Notes (This Campaign)
                 </label>
                 <textarea
-                  rows={4}
+                  rows={3}
                   value={editNotes}
                   onChange={(e) => setEditNotes(e.target.value)}
                   placeholder="Record editorial angles, response feedback, pricing terms, or follow-up notes..."
+                  className="w-full p-3 rounded-xl bg-[#0D1117] border border-white/[0.08] text-xs text-text-primary focus:outline-none focus:border-emerald-500 resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-text-muted block mb-1">
+                  Prospect Global Notes (Pipeline)
+                </label>
+                <textarea
+                  rows={2}
+                  value={editProspectNotes}
+                  onChange={(e) => setEditProspectNotes(e.target.value)}
+                  placeholder="Global notes on this domain/prospect (visible across all campaigns and Saved Prospects)..."
                   className="w-full p-3 rounded-xl bg-[#0D1117] border border-white/[0.08] text-xs text-text-primary focus:outline-none focus:border-emerald-500 resize-none"
                 />
               </div>

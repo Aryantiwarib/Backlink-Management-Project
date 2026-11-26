@@ -14,6 +14,7 @@ import {
   Globe
 } from 'lucide-react';
 import { SUPPORTED_PLACEHOLDERS } from './placeholderConstants';
+import { outreachApi } from '../../api/outreachService';
 
 export const EmailComposerModal = ({
   isOpen,
@@ -31,6 +32,11 @@ export const EmailComposerModal = ({
   const [body, setBody] = useState('');
   const [senderName, setSenderName] = useState('');
 
+  // Account state management (normalizes nested { connected, account } vs flat account object)
+  const [accountStatusState, setAccountStatusState] = useState(connectedAccount || null);
+  const [accountChecking, setAccountChecking] = useState(false);
+  const [selectedEmailMap, setSelectedEmailMap] = useState({});
+
   // Mode: 'compose' vs 'preview'
   const [viewMode, setViewMode] = useState('compose');
   const [previews, setPreviews] = useState([]);
@@ -44,7 +50,16 @@ export const EmailComposerModal = ({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
 
-  // Initialize selections when opened
+  // Normalize connected account details
+  const account = accountStatusState?.account || accountStatusState;
+  const isConnected = Boolean(
+    (accountStatusState?.connected && account?.status === 'connected') ||
+    accountStatusState?.status === 'connected' ||
+    account?.status === 'connected'
+  );
+  const accountEmail = account?.email || accountStatusState?.email || '';
+
+  // Initialize selections and check account status when opened
   useEffect(() => {
     if (isOpen) {
       setError('');
@@ -62,15 +77,36 @@ export const EmailComposerModal = ({
 
       setSelectedProspectIds(new Set(validIds.map(String)));
 
-      if (connectedAccount?.metadata?.name) {
-        setSenderName(connectedAccount.metadata.name);
+      // Initialize sender name
+      if (account?.metadata?.name || account?.name) {
+        setSenderName(account?.metadata?.name || account?.name);
+      }
+
+      // If connectedAccount prop is provided, sync state
+      if (connectedAccount) {
+        setAccountStatusState(connectedAccount);
+      } else {
+        // If not provided or null, fetch account status from API directly
+        setAccountChecking(true);
+        outreachApi
+          .getAccountStatus()
+          .then((status) => {
+            setAccountStatusState(status);
+            if (status?.account?.metadata?.name) {
+              setSenderName((prev) => prev || status.account.metadata.name);
+            }
+          })
+          .catch((err) => {
+            console.warn('[EmailComposer] Failed to fetch account status:', err.message);
+          })
+          .finally(() => {
+            setAccountChecking(false);
+          });
       }
     }
   }, [isOpen, prospects, connectedAccount]);
 
   if (!isOpen) return null;
-
-  const isConnected = connectedAccount?.status === 'connected';
 
   // Toggle prospect selection
   const toggleProspect = (id) => {
@@ -155,14 +191,14 @@ export const EmailComposerModal = ({
     for (const p of prospects) {
       const pId = String(p.prospectId?._id || p.prospectId || p.prospect?.id || p._id || p.id);
       if (selectedProspectIds.has(pId)) {
-        const email = p.contactEmail || p.prospect?.contactEmail;
+        const chosenEmail = selectedEmailMap[pId] || p.contactEmail || p.prospect?.contactEmail;
         const name = p.contactName || p.prospect?.contactName || '';
         const assignmentId = p.assignmentId || p._id;
-        if (email && email.includes('@')) {
+        if (chosenEmail && chosenEmail.includes('@')) {
           prospectSelections.push({
             prospectId: pId,
             assignmentId,
-            recipientEmail: email,
+            recipientEmail: chosenEmail,
             recipientName: name
           });
         }
@@ -176,7 +212,7 @@ export const EmailComposerModal = ({
 
     const confirmMsg = isScheduled
       ? `Schedule ${prospectSelections.length} outreach emails for ${scheduledDate}?`
-      : `Queue and send ${prospectSelections.length} personalized outreach emails via ${connectedAccount.email}?`;
+      : `Queue and send ${prospectSelections.length} personalized outreach emails via ${accountEmail}?`;
 
     if (!window.confirm(confirmMsg)) return;
 
@@ -214,9 +250,13 @@ export const EmailComposerModal = ({
                 Compose Outreach Email — {campaign?.name}
               </h3>
               <p className="text-xs text-text-muted">
-                {isConnected ? (
-                  <span>
-                    Sending from <strong className="text-text-primary">{connectedAccount?.email}</strong>
+                {accountChecking ? (
+                  <span className="text-text-muted flex items-center gap-1">
+                    <Clock className="w-3 h-3 animate-spin" /> Checking Gmail connection...
+                  </span>
+                ) : isConnected ? (
+                  <span className="text-emerald-400 font-medium">
+                    Sending from <strong className="text-text-primary font-bold">{accountEmail}</strong> (Connected via Google OAuth)
                   </span>
                 ) : (
                   <span className="text-amber-400 font-medium">
@@ -260,14 +300,16 @@ export const EmailComposerModal = ({
                 prospects.map((p) => {
                   const pId = String(p.prospectId?._id || p.prospectId || p.prospect?.id || p._id || p.id);
                   const domain = p.prospectDomain || p.prospect?.prospectDomain || 'Unknown';
-                  const email = p.contactEmail || p.prospect?.contactEmail;
-                  const hasEmail = Boolean(email && email.includes('@'));
+                  const allEmails = p.contactEmails || p.prospect?.contactEmails || [];
+                  const defaultEmail = p.contactEmail || p.prospect?.contactEmail || (allEmails[0]?.email || '');
+                  const currentSelectedEmail = selectedEmailMap[pId] || defaultEmail;
+                  const hasEmail = Boolean(currentSelectedEmail && currentSelectedEmail.includes('@'));
                   const isChecked = selectedProspectIds.has(pId);
 
                   return (
-                    <label
+                    <div
                       key={pId}
-                      className={`flex items-start gap-2.5 p-2 rounded-xl border cursor-pointer transition-all ${
+                      className={`p-2 rounded-xl border transition-all ${
                         !hasEmail
                           ? 'opacity-40 bg-white/[0.01] border-white/[0.04]'
                           : isChecked
@@ -275,22 +317,41 @@ export const EmailComposerModal = ({
                           : 'bg-[#15191E] border-white/[0.06] hover:border-white/[0.12]'
                       }`}
                     >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        disabled={!hasEmail}
-                        onChange={() => toggleProspect(pId)}
-                        className="rounded border-white/[0.2] bg-[#0D1117] text-emerald-500 focus:ring-0 mt-0.5 cursor-pointer disabled:cursor-not-allowed"
-                      />
-                      <div className="overflow-hidden">
-                        <span className="text-xs font-semibold text-text-primary block truncate">
-                          {domain}
-                        </span>
-                        <span className="text-[10px] text-text-muted block truncate">
-                          {hasEmail ? email : 'No contact email'}
-                        </span>
+                      <div className="flex items-start gap-2.5">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          disabled={!hasEmail}
+                          onChange={() => toggleProspect(pId)}
+                          className="rounded border-white/[0.2] bg-[#0D1117] text-emerald-500 focus:ring-0 mt-0.5 cursor-pointer disabled:cursor-not-allowed"
+                        />
+                        <div className="overflow-hidden flex-1">
+                          <span className="text-xs font-semibold text-text-primary block truncate">
+                            {domain}
+                          </span>
+                          {allEmails.length > 1 ? (
+                            <select
+                              value={currentSelectedEmail}
+                              onChange={(e) => {
+                                const newMail = e.target.value;
+                                setSelectedEmailMap((prev) => ({ ...prev, [pId]: newMail }));
+                              }}
+                              className="mt-1 w-full bg-black/60 border border-white/[0.1] rounded px-1.5 py-0.5 text-[10px] text-emerald-300 focus:outline-none"
+                            >
+                              {allEmails.map((em, idx) => (
+                                <option key={idx} value={em.email} className="bg-[#15191E] text-text-primary">
+                                  {em.email} {em.role ? `(${em.role})` : ''}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="text-[10px] text-text-muted block truncate">
+                              {hasEmail ? currentSelectedEmail : 'No contact email'}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </label>
+                    </div>
                   );
                 })
               )}

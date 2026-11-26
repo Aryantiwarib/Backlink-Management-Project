@@ -60,7 +60,8 @@ export const Sidebar = () => {
       group: 'OVERVIEW',
       items: [
         { label: 'Dashboard', path: '/', icon: LayoutDashboard },
-        { label: 'Websites', path: '/websites', icon: Globe, badge: websites.length ? `${websites.length}` : undefined }
+        { label: 'Websites', path: '/websites', icon: Globe, badge: websites.length ? `${websites.length}` : undefined },
+        { label: 'AI Assistant', path: '/assistant', icon: Sparkles, badge: 'AI' }
       ]
     },
     {

@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { dashboardService } from '../api/dashboardService';
 import { useWebsite } from './WebsiteContext';
 import { useToast } from './ToastContext';
@@ -22,48 +23,32 @@ export const DashboardProvider = ({ children }) => {
   const [dateRange, setDateRange] = useState('30d');
   const [chartRange, setChartRange] = useState('30D');
 
-  // Dynamic Dashboard Data States
-  const [dashboardData, setDashboardData] = useState(null);
-  const [loadingDashboard, setLoadingDashboard] = useState(true);
-  const [dashboardError, setDashboardError] = useState(null);
+  const activeSiteId = activeWebsite?._id || activeWebsite?.id;
 
-  // Fetch real database-driven dashboard metrics for the active website
-  const loadDashboard = useCallback(async () => {
-    if (!activeWebsite) {
-      setDashboardData(null);
-      setLoadingDashboard(false);
-      return;
-    }
+  // React Query for Dashboard caching across page navigations
+  const {
+    data: queryResult,
+    isLoading: loadingDashboard,
+    isFetching,
+    error: queryErrorObj,
+    refetch: refetchDashboard
+  } = useQuery({
+    queryKey: ['dashboard', activeSiteId],
+    queryFn: async () => {
+      if (!activeSiteId) return null;
+      return dashboardService.getDashboardData(activeSiteId);
+    },
+    enabled: Boolean(activeSiteId),
+    staleTime: 1000 * 60 * 2, // 2 minutes stale time
+    placeholderData: (previousData) => previousData
+  });
 
-    setLoadingDashboard(true);
-    setDashboardError(null);
-
-    try {
-      const siteId = activeWebsite.id || activeWebsite._id;
-      const res = await dashboardService.getDashboardData(siteId);
-
-      if (res && res.success) {
-        setDashboardData(res);
-      } else {
-        setDashboardData(null);
-      }
-    } catch (err) {
-      console.error('Failed to load dynamic dashboard data:', err);
-      setDashboardError(err.message || 'Failed to load dashboard metrics from database.');
-      setDashboardData(null);
-    } finally {
-      setLoadingDashboard(false);
-    }
-  }, [activeWebsite]);
-
-  // Synchronize dashboard whenever activeWebsite changes
-  useEffect(() => {
-    loadDashboard();
-  }, [loadDashboard]);
+  const dashboardData = queryResult && queryResult.success ? queryResult : null;
+  const dashboardError = queryErrorObj?.message || null;
 
   // Refresh helper
   const refreshAll = () => {
-    loadDashboard();
+    refetchDashboard();
     addToast('Dashboard data reloaded from database.', 'info');
   };
 
@@ -148,7 +133,7 @@ export const DashboardProvider = ({ children }) => {
 
     // Actions
     refreshAll,
-    refreshDashboard: loadDashboard,
+    refreshDashboard: refetchDashboard,
     handleExportReport,
 
     // Modals

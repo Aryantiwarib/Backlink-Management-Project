@@ -75,9 +75,16 @@ export const CampaignCard = ({
       {/* Top Header */}
       <div className="space-y-2">
         <div className="flex items-start justify-between gap-2">
-          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-semibold uppercase tracking-wider bg-white/[0.04] text-text-secondary border border-white/[0.06]">
-            {campaign.campaignType}
-          </span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-semibold uppercase tracking-wider bg-white/[0.04] text-text-secondary border border-white/[0.06]">
+              {campaign.campaignType}
+            </span>
+            {campaign.niche && (
+              <span className="px-2 py-0.5 rounded-lg text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 truncate max-w-[140px]">
+                {campaign.niche}
+              </span>
+            )}
+          </div>
           {getStatusBadge(campaign.status)}
         </div>
 
@@ -148,7 +155,7 @@ export const CampaignCard = ({
         <div className="flex items-center gap-1.5">
           {campaign.status === 'active' && (
             <button
-              onClick={() => onStatusChange(campaign.id, 'paused')}
+              onClick={() => onStatusChange(campaign.id || campaign._id, 'paused')}
               className="p-1.5 rounded-lg text-text-muted hover:text-amber-400 hover:bg-white/[0.04] transition-colors"
               title="Pause Campaign"
             >
@@ -158,7 +165,7 @@ export const CampaignCard = ({
 
           {campaign.status === 'paused' && (
             <button
-              onClick={() => onStatusChange(campaign.id, 'active')}
+              onClick={() => onStatusChange(campaign.id || campaign._id, 'active')}
               className="p-1.5 rounded-lg text-text-muted hover:text-emerald-400 hover:bg-white/[0.04] transition-colors"
               title="Resume Campaign"
             >
@@ -166,9 +173,19 @@ export const CampaignCard = ({
             </button>
           )}
 
+          {campaign.status !== 'completed' && campaign.status !== 'archived' && (
+            <button
+              onClick={() => onStatusChange(campaign.id || campaign._id, 'completed')}
+              className="p-1.5 rounded-lg text-text-muted hover:text-blue-400 hover:bg-white/[0.04] transition-colors"
+              title="Mark Complete"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+            </button>
+          )}
+
           {campaign.status !== 'archived' && (
             <button
-              onClick={() => onStatusChange(campaign.id, 'archived')}
+              onClick={() => onStatusChange(campaign.id || campaign._id, 'archived')}
               className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-white/[0.04] transition-colors"
               title="Archive Campaign"
             >
@@ -185,7 +202,7 @@ export const CampaignCard = ({
           </button>
 
           <button
-            onClick={() => onDelete(campaign.id, campaign.name)}
+            onClick={() => onDelete(campaign.id || campaign._id, campaign.name)}
             className="p-1.5 rounded-lg text-text-muted hover:text-rose-400 hover:bg-white/[0.04] transition-colors"
             title="Delete Campaign"
           >
@@ -194,7 +211,7 @@ export const CampaignCard = ({
         </div>
 
         <button
-          onClick={() => navigate(`/campaigns/${campaign.id}`)}
+          onClick={() => navigate(`/campaigns/${campaign.id || campaign._id}`)}
           className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-emerald-500/10 hover:border-emerald-500/20 text-text-secondary hover:text-emerald-400 border border-white/[0.08] text-xs font-semibold transition-all group-hover:border-emerald-500/30"
         >
           <span>Manage</span>

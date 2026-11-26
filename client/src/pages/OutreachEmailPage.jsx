@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import {
   Mail,
@@ -29,61 +30,125 @@ import { FollowUpList } from '../components/outreach/FollowUpList';
 import { FollowUpScheduleModal } from '../components/outreach/FollowUpScheduleModal';
 
 export const OutreachEmailPage = () => {
+  const queryClient = useQueryClient();
   const { activeWebsite } = useWebsite();
   const { addToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
+  const siteId = activeWebsite?._id;
 
   // Tab State: 'queue' | 'templates' | 'followups' | 'settings'
   const [activeTab, setActiveTab] = useState('queue');
 
-  // Account Status
-  const [accountStatus, setAccountStatus] = useState(null);
-  const [accountLoading, setAccountLoading] = useState(true);
-
-  // Campaigns
-  const [campaigns, setCampaigns] = useState([]);
+  // Selected Campaign State
   const [selectedCampaignId, setSelectedCampaignId] = useState('');
-  const [campaignsLoading, setCampaignsLoading] = useState(false);
 
-  // Templates
-  const [templates, setTemplates] = useState([]);
-  const [templatesLoading, setTemplatesLoading] = useState(false);
+  // Modals & Filters
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
-
-  // Queue & Stats
-  const [queueEmails, setQueueEmails] = useState([]);
-  const [queueLoading, setQueueLoading] = useState(false);
   const [queueFilter, setQueueFilter] = useState('all');
-  const [outreachStats, setOutreachStats] = useState(null);
-
-  // Assigned prospects for Composer
-  const [campaignProspects, setCampaignProspects] = useState([]);
-
-  // Modals
   const [composerOpen, setComposerOpen] = useState(false);
   const [followUpModalOpen, setFollowUpModalOpen] = useState(false);
   const [selectedAssignmentForFollowUp, setSelectedAssignmentForFollowUp] = useState(null);
   const [followUpRefreshTrigger, setFollowUpRefreshTrigger] = useState(0);
 
-  // Refs for tracking in-flight status requests and processed OAuth redirects
-  const accountLoadingRef = useRef(false);
+  // Ref for tracking processed OAuth redirects
   const oauthHandledRef = useRef(false);
 
-  // Load Gmail Account Status (declared before any effect or handler references it)
-  const loadAccountStatus = useCallback(async () => {
-    if (accountLoadingRef.current) return;
-    accountLoadingRef.current = true;
-    setAccountLoading(true);
-    try {
-      const data = await outreachApi.getAccountStatus();
-      setAccountStatus(data);
-    } catch (err) {
-      console.error('Failed to load email account status:', err);
-    } finally {
-      setAccountLoading(false);
-      accountLoadingRef.current = false;
+  // 1. Load Gmail Account Status
+  const {
+    data: accountStatus,
+    isLoading: accountLoading
+  } = useQuery({
+    queryKey: ['outreach-account'],
+    queryFn: async () => {
+      return await outreachApi.getAccountStatus();
+    },
+    staleTime: 2 * 60 * 1000
+  });
+
+  // 2. Load Templates
+  const {
+    data: templatesData,
+    isLoading: templatesLoading
+  } = useQuery({
+    queryKey: ['outreach-templates'],
+    queryFn: async () => {
+      const list = await outreachApi.listTemplates();
+      return list || [];
+    },
+    staleTime: 5 * 60 * 1000
+  });
+  const templates = templatesData || [];
+
+  // 3. Load Campaigns for active website
+  const {
+    data: campaignsData,
+    isLoading: campaignsLoading
+  } = useQuery({
+    queryKey: ['campaigns-select', siteId],
+    queryFn: async () => {
+      if (!siteId) return [];
+      const res = await campaignApi.getCampaigns(siteId, { limit: 100 });
+      return res.campaigns || [];
+    },
+    enabled: !!siteId,
+    staleTime: 2 * 60 * 1000
+  });
+  const campaigns = campaignsData || [];
+
+  // Synchronize selectedCampaignId with available campaigns
+  useEffect(() => {
+    if (campaigns.length > 0 && (!selectedCampaignId || !campaigns.some((c) => c._id === selectedCampaignId))) {
+      setSelectedCampaignId(campaigns[0]._id);
     }
-  }, []);
+  }, [campaigns, selectedCampaignId]);
+
+  // 4. Load Queue for Selected Campaign
+  const {
+    data: queueData,
+    isLoading: queueLoading
+  } = useQuery({
+    queryKey: ['outreach-queue', siteId, selectedCampaignId, queueFilter],
+    queryFn: async () => {
+      if (!siteId || !selectedCampaignId) return { emails: [] };
+      return await outreachApi.getQueue(siteId, selectedCampaignId, {
+        status: queueFilter !== 'all' ? queueFilter : undefined
+      });
+    },
+    enabled: !!siteId && !!selectedCampaignId,
+    staleTime: 30 * 1000
+  });
+  const queueEmails = queueData?.emails || [];
+
+  // 5. Load Outreach Stats / History for Selected Campaign
+  const {
+    data: historyData
+  } = useQuery({
+    queryKey: ['outreach-history', siteId, selectedCampaignId],
+    queryFn: async () => {
+      if (!siteId || !selectedCampaignId) return { stats: null };
+      return await outreachApi.getHistory(siteId, selectedCampaignId);
+    },
+    enabled: !!siteId && !!selectedCampaignId,
+    staleTime: 30 * 1000
+  });
+  const outreachStats = historyData?.stats || null;
+
+  // 6. Load Campaign Assigned Prospects (for composer modal)
+  const {
+    data: campaignProspectsData
+  } = useQuery({
+    queryKey: ['campaign-prospects-all', siteId, selectedCampaignId],
+    queryFn: async () => {
+      if (!siteId || !selectedCampaignId) return [];
+      const res = await campaignApi.getCampaignProspects(siteId, selectedCampaignId, {
+        limit: 100
+      });
+      return res.assignments || [];
+    },
+    enabled: !!siteId && !!selectedCampaignId,
+    staleTime: 60 * 1000
+  });
+  const campaignProspects = campaignProspectsData || [];
 
   // Connect Google Handler
   const handleConnectGoogle = async () => {
@@ -102,76 +167,11 @@ export const OutreachEmailPage = () => {
     try {
       await outreachApi.disconnectAccount();
       addToast('Gmail account disconnected', 'success');
-      loadAccountStatus();
+      await queryClient.invalidateQueries({ queryKey: ['outreach-account'] });
     } catch (err) {
       addToast(err?.message || 'Failed to disconnect Gmail account', 'error');
     }
   };
-
-  // Load Templates
-  const loadTemplates = useCallback(async () => {
-    setTemplatesLoading(true);
-    try {
-      const list = await outreachApi.listTemplates();
-      setTemplates(list);
-    } catch (err) {
-      console.error('Failed to load templates:', err);
-    } finally {
-      setTemplatesLoading(false);
-    }
-  }, []);
-
-  // Load Campaigns for active website
-  const loadCampaigns = useCallback(async () => {
-    if (!activeWebsite?._id) return;
-    setCampaignsLoading(true);
-    try {
-      const res = await campaignApi.getCampaigns(activeWebsite._id, { limit: 100 });
-      const items = res.campaigns || [];
-      setCampaigns(items);
-      if (items.length > 0 && !selectedCampaignId) {
-        setSelectedCampaignId(items[0]._id);
-      }
-    } catch (err) {
-      console.error('Failed to load campaigns:', err);
-    } finally {
-      setCampaignsLoading(false);
-    }
-  }, [activeWebsite?._id, selectedCampaignId]);
-
-  // Load Queue & Stats for Selected Campaign
-  const loadQueueAndStats = useCallback(async () => {
-    if (!activeWebsite?._id || !selectedCampaignId) return;
-    setQueueLoading(true);
-    try {
-      const [queueData, historyData] = await Promise.all([
-        outreachApi.getQueue(activeWebsite._id, selectedCampaignId, {
-          status: queueFilter !== 'all' ? queueFilter : undefined
-        }),
-        outreachApi.getHistory(activeWebsite._id, selectedCampaignId)
-      ]);
-
-      setQueueEmails(queueData.emails || []);
-      setOutreachStats(historyData.stats || null);
-    } catch (err) {
-      console.error('Failed to load outreach queue:', err);
-    } finally {
-      setQueueLoading(false);
-    }
-  }, [activeWebsite?._id, selectedCampaignId, queueFilter]);
-
-  // Load Campaign Assigned Prospects (for composer modal)
-  const loadCampaignProspects = useCallback(async () => {
-    if (!activeWebsite?._id || !selectedCampaignId) return;
-    try {
-      const res = await campaignApi.getCampaignProspects(activeWebsite._id, selectedCampaignId, {
-        limit: 100
-      });
-      setCampaignProspects(res.assignments || []);
-    } catch (err) {
-      console.error('Failed to load campaign prospects:', err);
-    }
-  }, [activeWebsite?._id, selectedCampaignId]);
 
   // Handle Google OAuth redirect result on mount
   useEffect(() => {
@@ -188,7 +188,7 @@ export const OutreachEmailPage = () => {
       nextParams.delete('google_connected');
       nextParams.delete('gmail_connected');
       setSearchParams(nextParams, { replace: true });
-      loadAccountStatus();
+      queryClient.invalidateQueries({ queryKey: ['outreach-account'] });
     } else if (googleError) {
       addToast(`Google connection failed: ${decodeURIComponent(googleError)}`, 'error');
       const nextParams = new URLSearchParams(searchParams);
@@ -196,33 +196,14 @@ export const OutreachEmailPage = () => {
       nextParams.delete('gmail_error');
       setSearchParams(nextParams, { replace: true });
     }
-  }, [searchParams, setSearchParams, addToast, loadAccountStatus]);
-
-  // Initial loads
-  useEffect(() => {
-    loadAccountStatus();
-    loadTemplates();
-  }, [loadAccountStatus, loadTemplates]);
-
-  useEffect(() => {
-    if (activeWebsite?._id) {
-      loadCampaigns();
-    }
-  }, [activeWebsite?._id, loadCampaigns]);
-
-  useEffect(() => {
-    if (selectedCampaignId) {
-      loadQueueAndStats();
-      loadCampaignProspects();
-    }
-  }, [selectedCampaignId, queueFilter, loadQueueAndStats, loadCampaignProspects]);
+  }, [searchParams, setSearchParams, addToast, queryClient]);
 
   // Template Handlers
   const handleCreateTemplate = async (templateData) => {
     try {
       await outreachApi.createTemplate(templateData);
       addToast('Template created successfully', 'success');
-      loadTemplates();
+      await queryClient.invalidateQueries({ queryKey: ['outreach-templates'] });
     } catch (err) {
       addToast(err?.message || 'Failed to create template', 'error');
       throw err;
@@ -233,7 +214,7 @@ export const OutreachEmailPage = () => {
     try {
       await outreachApi.updateTemplate(id, updateData);
       addToast('Template updated successfully', 'success');
-      loadTemplates();
+      await queryClient.invalidateQueries({ queryKey: ['outreach-templates'] });
     } catch (err) {
       addToast(err?.message || 'Failed to update template', 'error');
       throw err;
@@ -244,7 +225,7 @@ export const OutreachEmailPage = () => {
     try {
       await outreachApi.deleteTemplate(id);
       addToast('Template deleted', 'success');
-      loadTemplates();
+      await queryClient.invalidateQueries({ queryKey: ['outreach-templates'] });
     } catch (err) {
       addToast(err?.message || 'Failed to delete template', 'error');
       throw err;
@@ -253,16 +234,21 @@ export const OutreachEmailPage = () => {
 
   // Email Send Handler
   const handleSendEmails = async (payload) => {
-    if (!activeWebsite?._id || !selectedCampaignId) {
+    if (!siteId || !selectedCampaignId) {
       addToast('Please select a campaign first', 'error');
       return;
     }
 
     try {
-      const res = await outreachApi.sendOutreach(activeWebsite._id, selectedCampaignId, payload);
+      const res = await outreachApi.sendOutreach(siteId, selectedCampaignId, payload);
       addToast(res.message || 'Outreach queued successfully!', 'success');
-      loadQueueAndStats();
-      loadCampaignProspects();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['outreach-queue', siteId, selectedCampaignId] }),
+        queryClient.invalidateQueries({ queryKey: ['outreach-history', siteId, selectedCampaignId] }),
+        queryClient.invalidateQueries({ queryKey: ['campaign-prospects-all', siteId, selectedCampaignId] }),
+        queryClient.invalidateQueries({ queryKey: ['campaign-assignments', siteId, selectedCampaignId] }),
+        queryClient.invalidateQueries({ queryKey: ['dashboard', siteId] })
+      ]);
     } catch (err) {
       addToast(err?.message || 'Failed to queue outreach', 'error');
       throw err;
@@ -271,10 +257,10 @@ export const OutreachEmailPage = () => {
 
   // Preview Handler
   const handlePreviewEmails = async (payload) => {
-    if (!activeWebsite?._id || !selectedCampaignId) {
+    if (!siteId || !selectedCampaignId) {
       throw new Error('Please select a campaign first');
     }
-    return outreachApi.previewOutreach(activeWebsite._id, selectedCampaignId, payload);
+    return outreachApi.previewOutreach(siteId, selectedCampaignId, payload);
   };
 
   // Current selected campaign object
@@ -462,7 +448,10 @@ export const OutreachEmailPage = () => {
               loading={queueLoading}
               statusFilter={queueFilter}
               onStatusFilterChange={setQueueFilter}
-              onRefresh={loadQueueAndStats}
+              onRefresh={() => {
+                queryClient.invalidateQueries({ queryKey: ['outreach-queue', siteId, selectedCampaignId] });
+                queryClient.invalidateQueries({ queryKey: ['outreach-history', siteId, selectedCampaignId] });
+              }}
             />
           )}
         </div>
@@ -543,7 +532,7 @@ export const OutreachEmailPage = () => {
             loading={accountLoading}
             onConnect={handleConnectGoogle}
             onDisconnect={handleDisconnectGoogle}
-            onRefresh={loadAccountStatus}
+            onRefresh={() => queryClient.invalidateQueries({ queryKey: ['outreach-account'] })}
           />
         </div>
       )}
@@ -586,7 +575,8 @@ export const OutreachEmailPage = () => {
           templates={templates}
           onScheduled={() => {
             setFollowUpRefreshTrigger((prev) => prev + 1);
-            loadQueueAndStats();
+            queryClient.invalidateQueries({ queryKey: ['outreach-queue', siteId, selectedCampaignId] });
+            queryClient.invalidateQueries({ queryKey: ['outreach-history', siteId, selectedCampaignId] });
           }}
         />
       )}

@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Link2,
   Globe,
@@ -23,20 +24,10 @@ import { exportDashboardCsv } from '../utils/exportCsv';
 
 export const BacklinkExplorerPage = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { addToast } = useToast();
   const { activeWebsite, loading: loadingWebsites } = useWebsite();
-
-  // Primary Query States
-  const [backlinks, setBacklinks] = useState([]);
-  const [stats, setStats] = useState(null);
-  const [pagination, setPagination] = useState({
-    total: 0,
-    page: 1,
-    limit: 10,
-    totalPages: 1,
-    hasPrevPage: false,
-    hasNextPage: false
-  });
+  const siteId = activeWebsite?._id || activeWebsite?.id;
 
   // Filter & Search States
   const [search, setSearch] = useState('');
@@ -48,11 +39,7 @@ export const BacklinkExplorerPage = () => {
   const [limit, setLimit] = useState(10);
   const [activeTab, setActiveTab] = useState('table'); // 'table' | 'analysis'
 
-  // Loading & Error States
-  const [loading, setLoading] = useState(true);
-  const [loadingStats, setLoadingStats] = useState(true);
   const [syncingMoz, setSyncingMoz] = useState(false);
-  const [error, setError] = useState(null);
 
   // Detail Modal State
   const [selectedBacklink, setSelectedBacklink] = useState(null);
@@ -66,36 +53,34 @@ export const BacklinkExplorerPage = () => {
     (sortBy !== 'fetchedAt' ? 1 : 0) +
     (sortOrder !== 'desc' ? 1 : 0);
 
-  // Fetch Backlink Stats (Independent of pagination/filters)
-  const fetchStats = useCallback(async () => {
-    if (!activeWebsite?._id && !activeWebsite?.id) return;
-    try {
-      setLoadingStats(true);
-      const siteId = activeWebsite._id || activeWebsite.id;
+  // Query 1: Backlink Stats
+  const {
+    data: statsData,
+    isLoading: loadingStats,
+    isFetching: isFetchingStats
+  } = useQuery({
+    queryKey: ['backlink-stats', siteId],
+    queryFn: async () => {
+      if (!siteId) return null;
       const res = await backlinkService.getBacklinkStats({ websiteId: siteId });
-      if (res && res.success) {
-        setStats(res.data);
-      }
-    } catch (err) {
-      console.warn('Failed to fetch backlink stats:', err);
-    } finally {
-      setLoadingStats(false);
-    }
-  }, [activeWebsite]);
+      return res?.data || null;
+    },
+    enabled: !!siteId,
+    staleTime: 2 * 60 * 1000
+  });
+  const stats = statsData || null;
 
-  // Fetch Paginated Backlinks from MongoDB
-  const fetchBacklinks = useCallback(async () => {
-    if (!activeWebsite?._id && !activeWebsite?.id) {
-      setBacklinks([]);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-      const siteId = activeWebsite._id || activeWebsite.id;
-
+  // Query 2: Paginated Backlinks
+  const {
+    data: backlinksData,
+    isLoading: loadingBacklinks,
+    isFetching: isFetchingBacklinks,
+    error: backlinksError,
+    refetch: refetchBacklinks
+  } = useQuery({
+    queryKey: ['backlinks', siteId, { page, limit, search, linkType, provider, sortBy, sortOrder }],
+    queryFn: async () => {
+      if (!siteId) return { backlinks: [], pagination: null };
       const res = await backlinkService.getSavedBacklinks({
         websiteId: siteId,
         page,
@@ -106,32 +91,24 @@ export const BacklinkExplorerPage = () => {
         sortBy,
         sortOrder
       });
+      return res;
+    },
+    enabled: !!siteId,
+    placeholderData: (previousData) => previousData,
+    staleTime: 60 * 1000
+  });
 
-      if (res && res.success) {
-        setBacklinks(res.backlinks || []);
-        if (res.pagination) {
-          setPagination(res.pagination);
-        }
-      } else {
-        setBacklinks([]);
-      }
-    } catch (err) {
-      console.error('Failed to load backlinks from database:', err);
-      setError(err.message || 'Failed to retrieve saved backlinks.');
-      setBacklinks([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [activeWebsite, page, limit, search, linkType, provider, sortBy, sortOrder]);
-
-  // Initial & Dependent Fetch Triggers
-  useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
-
-  useEffect(() => {
-    fetchBacklinks();
-  }, [fetchBacklinks]);
+  const backlinks = backlinksData?.backlinks || [];
+  const pagination = backlinksData?.pagination || {
+    total: 0,
+    page: 1,
+    limit: 10,
+    totalPages: 1,
+    hasPrevPage: false,
+    hasNextPage: false
+  };
+  const loading = loadingBacklinks;
+  const error = backlinksError?.message || null;
 
   // Reset filters handler
   const handleResetFilters = () => {
@@ -237,7 +214,11 @@ export const BacklinkExplorerPage = () => {
       );
 
       // Refresh both backlink records and summary stats
-      await Promise.all([fetchBacklinks(), fetchStats()]);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['backlinks', siteId] }),
+        queryClient.invalidateQueries({ queryKey: ['backlink-stats', siteId] }),
+        queryClient.invalidateQueries({ queryKey: ['dashboard', siteId] })
+      ]);
     } catch (err) {
       console.error('Failed to sync Moz data:', err);
       addToast(err.message || 'Failed to sync backlink data from Moz API.', 'error');
@@ -308,7 +289,7 @@ export const BacklinkExplorerPage = () => {
         {/* Action Controls */}
         <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
           <button
-            onClick={fetchBacklinks}
+            onClick={() => refetchBacklinks()}
             disabled={loading}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#101318] hover:bg-white/[0.06] text-text-muted hover:text-text-primary text-xs font-semibold border border-white/[0.08] transition-all disabled:opacity-50"
             title="Reload from MongoDB"
@@ -347,7 +328,7 @@ export const BacklinkExplorerPage = () => {
             <span>{error}</span>
           </div>
           <button
-            onClick={fetchBacklinks}
+            onClick={() => refetchBacklinks()}
             className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-semibold text-[11px]"
           >
             Retry

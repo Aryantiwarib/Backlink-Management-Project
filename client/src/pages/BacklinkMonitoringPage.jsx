@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
   ShieldCheck,
@@ -24,26 +25,19 @@ import { MonitoringEventsList } from '../components/monitoring/MonitoringEventsL
 import { MonitoringScanHistoryTable } from '../components/monitoring/MonitoringScanHistoryTable';
 
 export const BacklinkMonitoringPage = () => {
+  const queryClient = useQueryClient();
   const { activeWebsite, websites, loading: websitesLoading } = useWebsite();
   const { addToast } = useToast();
+  const siteId = activeWebsite?._id;
 
   const [activeTab, setActiveTab] = useState('events'); // 'events' | 'history'
-  const [summary, setSummary] = useState(null);
-  const [loadingSummary, setLoadingSummary] = useState(false);
 
-  // Events state
-  const [events, setEvents] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [eventsLoading, setEventsLoading] = useState(false);
+  // Events query filters
   const [eventsFilter, setEventsFilter] = useState('all');
   const [eventsPage, setEventsPage] = useState(1);
-  const [eventsPagination, setEventsPagination] = useState(null);
 
-  // Scan History state
-  const [scans, setScans] = useState([]);
-  const [scansLoading, setScansLoading] = useState(false);
+  // Scan History query filters
   const [scansPage, setScansPage] = useState(1);
-  const [scansPagination, setScansPagination] = useState(null);
 
   // Action states
   const [scanning, setScanning] = useState(false);
@@ -52,75 +46,65 @@ export const BacklinkMonitoringPage = () => {
 
   const cooldownTimerRef = useRef(null);
 
-  // Load summary for active website
-  const loadSummary = useCallback(async () => {
-    if (!activeWebsite?._id) return;
-    setLoadingSummary(true);
-    try {
-      const data = await monitoringApi.getSummary(activeWebsite._id);
-      setSummary(data);
-      setUnreadCount(data.stats?.unreadCount || 0);
-    } catch (err) {
-      console.error('Failed to load monitoring summary:', err);
-    } finally {
-      setLoadingSummary(false);
-    }
-  }, [activeWebsite?._id]);
-
-  // Load events
-  const loadEvents = useCallback(
-    async (page = 1, filter = eventsFilter) => {
-      if (!activeWebsite?._id) return;
-      setEventsLoading(true);
-      try {
-        const data = await monitoringApi.getEvents(activeWebsite._id, {
-          page,
-          limit: 15,
-          eventType: filter
-        });
-        setEvents(data.events || []);
-        setUnreadCount(data.unreadCount || 0);
-        setEventsPagination(data.pagination);
-        setEventsPage(page);
-      } catch (err) {
-        console.error('Failed to load monitoring events:', err);
-      } finally {
-        setEventsLoading(false);
-      }
+  // 1. Monitoring Summary Query
+  const {
+    data: summaryData,
+    isLoading: loadingSummary,
+    isFetching: isFetchingSummary
+  } = useQuery({
+    queryKey: ['monitoring-summary', siteId],
+    queryFn: async () => {
+      if (!siteId) return null;
+      return await monitoringApi.getSummary(siteId);
     },
-    [activeWebsite?._id, eventsFilter]
-  );
+    enabled: !!siteId,
+    staleTime: 2 * 60 * 1000
+  });
+  const summary = summaryData || null;
 
-  // Load scan history
-  const loadScanHistory = useCallback(
-    async (page = 1) => {
-      if (!activeWebsite?._id) return;
-      setScansLoading(true);
-      try {
-        const data = await monitoringApi.getScanHistory(activeWebsite._id, {
-          page,
-          limit: 10
-        });
-        setScans(data.scans || []);
-        setScansPagination(data.pagination);
-        setScansPage(page);
-      } catch (err) {
-        console.error('Failed to load scan history:', err);
-      } finally {
-        setScansLoading(false);
-      }
+  // 2. Monitoring Events Query
+  const {
+    data: eventsData,
+    isLoading: eventsLoading,
+    isFetching: isFetchingEvents
+  } = useQuery({
+    queryKey: ['monitoring-events', siteId, { page: eventsPage, filter: eventsFilter }],
+    queryFn: async () => {
+      if (!siteId) return { events: [], unreadCount: 0, pagination: null };
+      return await monitoringApi.getEvents(siteId, {
+        page: eventsPage,
+        limit: 15,
+        eventType: eventsFilter
+      });
     },
-    [activeWebsite?._id]
-  );
+    enabled: !!siteId,
+    placeholderData: (prev) => prev,
+    staleTime: 60 * 1000
+  });
+  const events = eventsData?.events || [];
+  const eventsPagination = eventsData?.pagination || null;
+  const unreadCount = eventsData?.unreadCount ?? (summary?.stats?.unreadCount || 0);
 
-  // Reload everything when active website changes
-  useEffect(() => {
-    if (activeWebsite?._id) {
-      loadSummary();
-      loadEvents(1, eventsFilter);
-      loadScanHistory(1);
-    }
-  }, [activeWebsite?._id, loadSummary, loadEvents, loadScanHistory, eventsFilter]);
+  // 3. Monitoring Scans Query
+  const {
+    data: scansData,
+    isLoading: scansLoading,
+    isFetching: isFetchingScans
+  } = useQuery({
+    queryKey: ['monitoring-scans', siteId, { page: scansPage }],
+    queryFn: async () => {
+      if (!siteId) return { scans: [], pagination: null };
+      return await monitoringApi.getScanHistory(siteId, {
+        page: scansPage,
+        limit: 10
+      });
+    },
+    enabled: !!siteId,
+    placeholderData: (prev) => prev,
+    staleTime: 2 * 60 * 1000
+  });
+  const scans = scansData?.scans || [];
+  const scansPagination = scansData?.pagination || null;
 
   // Cooldown countdown timer interval
   useEffect(() => {
@@ -142,10 +126,10 @@ export const BacklinkMonitoringPage = () => {
 
   // Handle manual scan trigger
   const handleTriggerScan = async () => {
-    if (!activeWebsite?._id || scanning || cooldownRemaining > 0) return;
+    if (!siteId || scanning || cooldownRemaining > 0) return;
     setScanning(true);
     try {
-      const result = await monitoringApi.triggerScan(activeWebsite._id);
+      const result = await monitoringApi.triggerScan(siteId);
       addToast(
         result.summary?.isBaseline
           ? `Baseline scan completed! ${result.summary.backlinksChecked} backlinks mapped.`
@@ -156,8 +140,13 @@ export const BacklinkMonitoringPage = () => {
       );
       // Start 60s cooldown timer
       setCooldownRemaining(60);
-      // Refresh summary, events and scans
-      await Promise.all([loadSummary(), loadEvents(1, eventsFilter), loadScanHistory(1)]);
+      // Refresh summary, events and scans via cache invalidation
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['monitoring-summary', siteId] }),
+        queryClient.invalidateQueries({ queryKey: ['monitoring-events', siteId] }),
+        queryClient.invalidateQueries({ queryKey: ['monitoring-scans', siteId] }),
+        queryClient.invalidateQueries({ queryKey: ['dashboard', siteId] })
+      ]);
     } catch (err) {
       if (err.code === 'SCAN_COOLDOWN') {
         const remaining = err.remainingSeconds || 60;
@@ -173,11 +162,11 @@ export const BacklinkMonitoringPage = () => {
 
   // Handle settings update
   const handleUpdateSettings = async (partialSettings) => {
-    if (!activeWebsite?._id) return;
+    if (!siteId) return;
     setUpdatingSettings(true);
     try {
-      const updated = await monitoringApi.updateSettings(activeWebsite._id, partialSettings);
-      setSummary((prev) => (prev ? { ...prev, settings: updated } : prev));
+      await monitoringApi.updateSettings(siteId, partialSettings);
+      await queryClient.invalidateQueries({ queryKey: ['monitoring-summary', siteId] });
       addToast('Monitoring settings updated successfully.', 'success');
     } catch (err) {
       addToast(err.message || 'Failed to update settings', 'error');
@@ -190,10 +179,10 @@ export const BacklinkMonitoringPage = () => {
   const handleMarkEventRead = async (eventId) => {
     try {
       await monitoringApi.markEventRead(eventId);
-      setEvents((prev) =>
-        prev.map((e) => (e.id === eventId ? { ...e, isRead: true } : e))
-      );
-      setUnreadCount((c) => Math.max(0, c - 1));
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['monitoring-events', siteId] }),
+        queryClient.invalidateQueries({ queryKey: ['monitoring-summary', siteId] })
+      ]);
     } catch (err) {
       addToast('Failed to update event', 'error');
     }
@@ -201,11 +190,13 @@ export const BacklinkMonitoringPage = () => {
 
   // Mark all events read
   const handleMarkAllEventsRead = async () => {
-    if (!activeWebsite?._id) return;
+    if (!siteId) return;
     try {
-      await monitoringApi.markAllEventsRead(activeWebsite._id);
-      setEvents((prev) => prev.map((e) => ({ ...e, isRead: true })));
-      setUnreadCount(0);
+      await monitoringApi.markAllEventsRead(siteId);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['monitoring-events', siteId] }),
+        queryClient.invalidateQueries({ queryKey: ['monitoring-summary', siteId] })
+      ]);
       addToast('All events marked as read.', 'success');
     } catch (err) {
       addToast('Failed to mark all events as read', 'error');
@@ -215,7 +206,7 @@ export const BacklinkMonitoringPage = () => {
   // Change filter
   const handleFilterChange = (newFilter) => {
     setEventsFilter(newFilter);
-    loadEvents(1, newFilter);
+    setEventsPage(1);
   };
 
   // Render Empty State if no websites registered
@@ -280,9 +271,9 @@ export const BacklinkMonitoringPage = () => {
 
           <button
             onClick={() => {
-              loadSummary();
-              if (activeTab === 'events') loadEvents(eventsPage, eventsFilter);
-              if (activeTab === 'history') loadScanHistory(scansPage);
+              queryClient.invalidateQueries({ queryKey: ['monitoring-summary', siteId] });
+              queryClient.invalidateQueries({ queryKey: ['monitoring-events', siteId] });
+              queryClient.invalidateQueries({ queryKey: ['monitoring-scans', siteId] });
             }}
             disabled={loadingSummary || eventsLoading || scansLoading}
             className="p-2 rounded-xl bg-[#15191E] border border-white/[0.08] hover:border-white/[0.16] text-text-muted hover:text-text-primary transition-colors"
@@ -363,14 +354,14 @@ export const BacklinkMonitoringPage = () => {
           activeFilter={eventsFilter}
           onFilterChange={handleFilterChange}
           pagination={eventsPagination}
-          onPageChange={(page) => loadEvents(page, eventsFilter)}
+          onPageChange={(page) => setEventsPage(page)}
         />
       ) : (
         <MonitoringScanHistoryTable
           scans={scans}
           loading={scansLoading}
           pagination={scansPagination}
-          onPageChange={loadScanHistory}
+          onPageChange={(page) => setScansPage(page)}
         />
       )}
     </div>
