@@ -1,0 +1,71 @@
+services:
+  # MongoDB Database Service
+  mongodb:
+    image: mongo:7.0
+    container_name: linkora-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=linkora
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --eval 'db.adminCommand(\"ping\")' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - linkora-network
+
+  # Backend REST API Service
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: linkora-server
+    restart: unless-stopped
+    ports:
+      - "5002:5002"
+    environment:
+      - PORT=5002
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongodb:27017/linkora
+      - CLIENT_URL=http://localhost:5173
+      - BACKEND_URL=http://localhost:5002
+      - SESSION_SECRET=${SESSION_SECRET:-linkora_docker_session_secret_2026}
+      - SEO_PROVIDER=${SEO_PROVIDER:-moz}
+      - MOZ_API_TOKEN=${MOZ_API_TOKEN:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - linkora-network
+
+  # Frontend Web UI (Nginx SPA)
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:5002/api
+        VITE_BACKEND_URL: http://localhost:5002
+    container_name: linkora-client
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - server
+    networks:
+      - linkora-network
+
+volumes:
+  mongo_data:
+    driver: local
+
+networks:
+  linkora-network:
+    driver: bridge

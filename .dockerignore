@@ -1,0 +1,14 @@
+node_modules
+.git
+.gitignore
+.env
+.env.*
+.env.local
+.DS_Store
+*.log
+coverage
+docs
+client/dist
+client/node_modules
+server/node_modules
+server/tests
