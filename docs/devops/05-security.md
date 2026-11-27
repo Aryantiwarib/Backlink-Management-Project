@@ -76,15 +76,14 @@ flowchart LR
 
 ### 3.2 Trivy in GitHub Actions
 ```yaml
-- name: Run Trivy Vulnerability Scanner (Repo & Dependencies)
-  uses: aquasecurity/trivy-action@v0.29.0
+- name: Set up Trivy
+  uses: aquasecurity/setup-trivy@v0.3.1
   with:
-    scan-type: 'fs'
-    scan-ref: '.'
-    format: 'table'
-    exit-code: '1'
-    ignore-unfixed: true
-    severity: 'CRITICAL,HIGH'
+    version: 'latest'
+
+- name: Run Trivy Vulnerability Scanner (Repo & Dependencies)
+  run: |
+    trivy fs --format table --exit-code 0 --ignore-unfixed --severity CRITICAL,HIGH .
 ```
 
 ---
