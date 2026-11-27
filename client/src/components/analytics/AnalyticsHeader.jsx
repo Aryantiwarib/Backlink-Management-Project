@@ -46,18 +46,18 @@ export const AnalyticsHeader = ({
   };
 
   return (
-    <div className="bg-slate-900/90 border-b border-slate-800 backdrop-blur sticky top-0 z-20 px-6 py-4">
+    <div className="bg-[#15191E] border border-white/[0.06] rounded-2xl p-5 shadow-card">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         {/* Left: Title & Active Website Selector */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap sm:flex-nowrap">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold text-white tracking-tight">Reports & Analytics</h1>
-              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <h1 className="text-xl font-bold text-text-primary tracking-tight">Reports & Analytics</h1>
+              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
                 Live Data
               </span>
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-text-muted mt-0.5">
               Comprehensive growth trends, campaign impact, and executive SEO reporting
             </p>
           </div>
@@ -66,19 +66,19 @@ export const AnalyticsHeader = ({
           <div className="relative">
             <button
               onClick={() => setWebsiteDropdownOpen(!websiteDropdownOpen)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 text-sm text-slate-200 transition"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#101318] hover:bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.14] text-xs text-text-primary transition-colors"
               title="Switch Active Website"
             >
               <Globe className="w-3.5 h-3.5 text-indigo-400" />
-              <span className="font-medium max-w-[140px] truncate">
+              <span className="font-mono font-medium max-w-[140px] truncate">
                 {activeWebsite?.domain || 'Select Website'}
               </span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              <ChevronDown className="w-3.5 h-3.5 text-text-muted" />
             </button>
 
             {websiteDropdownOpen && (
-              <div className="absolute left-0 mt-2 w-64 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-1.5 z-50">
-                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-2 py-1">
+              <div className="absolute left-0 mt-2 w-64 bg-[#15191E] border border-white/[0.1] rounded-2xl shadow-elevated p-1.5 z-50">
+                <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider px-2 py-1">
                   Select Workspace Domain
                 </div>
                 {websites.map((w) => {
@@ -90,15 +90,15 @@ export const AnalyticsHeader = ({
                         switchActiveWebsite(w._id);
                         setWebsiteDropdownOpen(false);
                       }}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs text-left transition ${
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-left transition-colors ${
                         isSelected
-                          ? 'bg-indigo-600/20 text-indigo-300 font-semibold border border-indigo-500/30'
-                          : 'text-slate-300 hover:bg-slate-800/60'
+                          ? 'bg-indigo-600/15 text-indigo-300 font-semibold border border-indigo-500/30'
+                          : 'text-text-secondary hover:bg-white/[0.04] hover:text-text-primary'
                       }`}
                     >
                       <div className="truncate">
-                        <div className="font-medium truncate">{w.domain}</div>
-                        <div className="text-[10px] text-slate-500 truncate">{w.name}</div>
+                        <div className="font-mono text-xs truncate">{w.domain}</div>
+                        <div className="text-[10px] text-text-muted truncate">{w.name}</div>
                       </div>
                       {isSelected && <Check className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />}
                     </button>
@@ -112,7 +112,7 @@ export const AnalyticsHeader = ({
         {/* Right: Date Range Pills & Actions */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Preset Range Selector */}
-          <div className="flex items-center bg-slate-800/80 rounded-lg p-0.5 border border-slate-700/80 text-xs">
+          <div className="flex items-center bg-[#101318] rounded-xl p-1 border border-white/[0.06] text-xs">
             {PRESET_RANGES.map((preset) => {
               const active = dateRange === preset.id;
               return (
@@ -125,10 +125,10 @@ export const AnalyticsHeader = ({
                       setDateRange(preset.id);
                     }
                   }}
-                  className={`px-2.5 py-1 rounded-md font-medium transition ${
+                  className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
                     active
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm font-semibold'
+                      : 'text-text-muted hover:text-text-primary hover:bg-white/[0.04]'
                   }`}
                 >
                   {preset.label}
@@ -141,26 +141,26 @@ export const AnalyticsHeader = ({
           <button
             onClick={onRefresh}
             disabled={isRefreshing}
-            className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 text-slate-300 hover:text-white transition disabled:opacity-50"
+            className="p-2 rounded-xl bg-[#101318] hover:bg-white/[0.04] border border-white/[0.07] hover:border-white/[0.14] text-text-muted hover:text-text-primary transition-colors disabled:opacity-50"
             title="Reload analytics data"
           >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-indigo-400' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-indigo-400' : ''}`} />
           </button>
 
           {/* Export CSV Button */}
           <button
             onClick={onExportCsv}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-slate-200 transition"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#101318] hover:bg-white/[0.04] border border-white/[0.07] hover:border-white/[0.14] text-xs font-semibold text-text-primary transition-colors"
             title="Export full analytics as CSV report"
           >
-            <Download className="w-3.5 h-3.5 text-slate-400" />
+            <Download className="w-3.5 h-3.5 text-text-muted" />
             <span>Export CSV</span>
           </button>
 
           {/* Executive Report Button */}
           <button
             onClick={onOpenReport}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/20 transition"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:via-indigo-500 hover:to-purple-500 text-white text-xs font-semibold shadow-md shadow-indigo-950/40 hover:shadow-indigo-500/25 transition-all"
             title="Generate print-ready executive report"
           >
             <FileText className="w-3.5 h-3.5" />
@@ -172,15 +172,15 @@ export const AnalyticsHeader = ({
       {/* Custom Date Modal */}
       {customModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm p-6 shadow-2xl">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+          <div className="bg-[#15191E] border border-white/[0.1] rounded-2xl w-full max-w-sm p-6 shadow-elevated">
+            <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
+              <h3 className="text-sm font-bold text-text-primary flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-indigo-400" />
                 Select Custom Date Range
               </h3>
               <button
                 onClick={() => setCustomModalOpen(false)}
-                className="text-slate-400 hover:text-white text-sm"
+                className="text-text-muted hover:text-text-primary text-sm p-1"
               >
                 ✕
               </button>
@@ -188,36 +188,36 @@ export const AnalyticsHeader = ({
 
             <div className="space-y-4 py-4">
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Start Date</label>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Start Date</label>
                 <input
                   type="date"
                   value={tempStart}
                   onChange={(e) => setTempStart(e.target.value)}
-                  className="w-full bg-slate-800/90 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-[#101318] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-text-primary focus:outline-none focus:border-indigo-500"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">End Date</label>
+                <label className="block text-xs font-medium text-text-secondary mb-1">End Date</label>
                 <input
                   type="date"
                   value={tempEnd}
                   onChange={(e) => setTempEnd(e.target.value)}
-                  className="w-full bg-slate-800/90 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-[#101318] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-text-primary focus:outline-none focus:border-indigo-500"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-800">
+            <div className="flex items-center justify-end gap-2 pt-4 border-t border-white/[0.08]">
               <button
                 onClick={() => setCustomModalOpen(false)}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white"
+                className="px-3 py-1.5 rounded-xl text-xs font-medium text-text-muted hover:text-text-primary transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleApplyCustom}
                 disabled={!tempStart || !tempEnd}
-                className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50"
+                className="px-4 py-1.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white disabled:opacity-50 transition-all shadow-md"
               >
                 Apply Range
               </button>

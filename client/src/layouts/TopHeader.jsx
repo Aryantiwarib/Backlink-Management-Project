@@ -136,7 +136,7 @@ export const TopHeader = () => {
   };
 
   return (
-    <header className="sticky top-0 z-30 h-16 bg-[#0B0D10]/85 backdrop-blur-md border-b border-white/[0.06] px-4 sm:px-6 flex items-center justify-between">
+    <header className="sticky top-0 z-40 h-16 bg-[#0B0D10]/85 backdrop-blur-md border-b border-white/[0.06] px-4 sm:px-6 flex items-center justify-between">
       {/* Left: Mobile Toggle & Breadcrumbs */}
       <div className="flex items-center gap-3">
         {/* Mobile menu trigger */}
@@ -278,6 +278,16 @@ export const TopHeader = () => {
             </div>
           )}
         </div>
+
+        {/* AI SEO Assistant Quick Nav Button */}
+        <button
+          onClick={() => navigate('/assistant')}
+          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600/10 via-indigo-600/10 to-purple-600/10 hover:from-blue-600/20 hover:via-indigo-600/20 hover:to-purple-600/20 border border-indigo-500/20 hover:border-indigo-500/40 text-xs text-indigo-300 hover:text-white transition-all shadow-sm group"
+          title="Open AI SEO Assistant"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-indigo-400 group-hover:text-indigo-300 transition-transform group-hover:scale-110" />
+          <span className="hidden xl:inline font-medium text-xs">AI Assistant</span>
+        </button>
 
         {/* Global Search Button */}
         <button

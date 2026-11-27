@@ -142,44 +142,44 @@ export const AnalyticsOverviewTab = ({ overviewData, onSelectTab }) => {
   return (
     <div className="space-y-6">
       {/* Net Backlink Growth Banner Card */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border border-slate-800 p-6 shadow-xl">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#15191E] via-indigo-950/30 to-[#15191E] border border-white/[0.08] p-6 shadow-card">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-500/15 text-indigo-300 border border-indigo-500/25 font-mono">
                 Period Net Velocity
               </span>
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-text-muted font-mono">
                 {period?.range?.toUpperCase()} Window ({new Date(period?.current?.startDate).toLocaleDateString()} - {new Date(period?.current?.endDate).toLocaleDateString()})
               </span>
             </div>
-            <h2 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-3">
+            <h2 className="text-2xl font-extrabold text-text-primary tracking-tight flex items-center gap-3">
               Net Backlink Growth:{' '}
               <span
-                className={
+                className={`font-mono ${
                   netBacklinks.current >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                }
+                }`}
               >
                 {netBacklinks.current >= 0 ? `+${netBacklinks.current}` : netBacklinks.current} Links
               </span>
             </h2>
-            <p className="text-xs text-slate-300 mt-1 max-w-xl">
+            <p className="text-xs text-text-secondary mt-1 max-w-xl">
               Calculated as newly indexed backlinks ({kpis.newBacklinks.current || 0}) minus detected dropped/lost backlinks ({kpis.lostBacklinks.current || 0}) during this reporting period.
             </p>
           </div>
 
-          <div className="flex items-center gap-4 bg-slate-900/80 border border-slate-800 rounded-xl p-4">
+          <div className="flex items-center gap-4 bg-[#101318]/90 border border-white/[0.06] rounded-xl p-4">
             <div className="text-right">
-              <div className="text-[11px] font-medium text-slate-400 uppercase">Previous Window</div>
-              <div className="text-base font-bold text-slate-200">
+              <div className="text-[11px] font-medium text-text-muted uppercase">Previous Window</div>
+              <div className="text-base font-bold font-mono text-text-primary">
                 {netBacklinks.previous >= 0 ? `+${netBacklinks.previous}` : netBacklinks.previous}
               </div>
             </div>
-            <div className="h-8 w-px bg-slate-800" />
+            <div className="h-8 w-px bg-white/[0.08]" />
             <div>
-              <div className="text-[11px] font-medium text-slate-400 uppercase">Period Shift</div>
+              <div className="text-[11px] font-medium text-text-muted uppercase">Period Shift</div>
               <div
-                className={`text-base font-bold ${
+                className={`text-base font-bold font-mono ${
                   netBacklinks.change >= 0 ? 'text-emerald-400' : 'text-rose-400'
                 }`}
               >
@@ -200,32 +200,32 @@ export const AnalyticsOverviewTab = ({ overviewData, onSelectTab }) => {
           return (
             <div
               key={config.key}
-              className="bg-slate-900/70 border border-slate-800/80 rounded-xl p-5 hover:border-slate-700/80 transition shadow-sm flex flex-col justify-between"
+              className="bg-[#15191E] border border-white/[0.06] hover:border-white/[0.12] rounded-2xl p-5 shadow-card transition-all flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between gap-2 mb-3">
-                  <span className="text-xs font-semibold text-slate-300">
+                  <span className="text-xs font-semibold text-text-secondary">
                     {config.label}
                   </span>
-                  <div className={`p-2 rounded-lg border ${config.bgColor}`}>
+                  <div className={`p-2 rounded-xl border ${config.bgColor}`}>
                     <Icon className={`w-4 h-4 ${config.iconColor}`} />
                   </div>
                 </div>
 
-                <div className="text-2xl font-black text-white tracking-tight">
+                <div className="text-2xl font-black font-mono text-text-primary tracking-tight">
                   {currValue !== null && currValue !== undefined
                     ? formatNumber(currValue)
                     : 'N/A'}
                 </div>
-                <div className="text-[11px] text-slate-500 mt-0.5 truncate">
+                <div className="text-[11px] text-text-muted mt-0.5 truncate">
                   {config.description}
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between">
+              <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between">
                 {renderComparisonBadge(metricData, config.invertTrend)}
                 {metricData?.previous !== null && metricData?.previous !== undefined && (
-                  <span className="text-[10px] text-slate-500">
+                  <span className="text-[10px] text-text-muted font-mono">
                     Prev: {formatNumber(metricData.previous)}
                   </span>
                 )}
@@ -239,47 +239,47 @@ export const AnalyticsOverviewTab = ({ overviewData, onSelectTab }) => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
         <button
           onClick={() => onSelectTab('backlinks')}
-          className="bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 rounded-xl p-4 text-left transition flex items-center justify-between group"
+          className="bg-[#15191E] hover:bg-white/[0.03] border border-white/[0.06] hover:border-indigo-500/30 rounded-2xl p-4 text-left transition-all flex items-center justify-between group shadow-card"
         >
           <div>
-            <div className="text-xs font-bold text-white group-hover:text-indigo-300 transition">
+            <div className="text-xs font-bold text-text-primary group-hover:text-indigo-300 transition">
               Backlink Growth Analytics
             </div>
-            <div className="text-[11px] text-slate-400 mt-0.5">
+            <div className="text-[11px] text-text-muted mt-0.5">
               Historical line charts, new vs lost breakdown, and anchor profiles
             </div>
           </div>
-          <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition" />
+          <ArrowRight className="w-4 h-4 text-text-muted group-hover:text-indigo-400 group-hover:translate-x-0.5 transition" />
         </button>
 
         <button
           onClick={() => onSelectTab('campaigns')}
-          className="bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 rounded-xl p-4 text-left transition flex items-center justify-between group"
+          className="bg-[#15191E] hover:bg-white/[0.03] border border-white/[0.06] hover:border-indigo-500/30 rounded-2xl p-4 text-left transition-all flex items-center justify-between group shadow-card"
         >
           <div>
-            <div className="text-xs font-bold text-white group-hover:text-indigo-300 transition">
+            <div className="text-xs font-bold text-text-primary group-hover:text-indigo-300 transition">
               Campaign & Prospect Performance
             </div>
-            <div className="text-[11px] text-slate-400 mt-0.5">
+            <div className="text-[11px] text-text-muted mt-0.5">
               Acquisition progress, outreach pipelines, and discovery rates
             </div>
           </div>
-          <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition" />
+          <ArrowRight className="w-4 h-4 text-text-muted group-hover:text-indigo-400 group-hover:translate-x-0.5 transition" />
         </button>
 
         <button
           onClick={() => onSelectTab('insights')}
-          className="bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 rounded-xl p-4 text-left transition flex items-center justify-between group"
+          className="bg-[#15191E] hover:bg-white/[0.03] border border-white/[0.06] hover:border-indigo-500/30 rounded-2xl p-4 text-left transition-all flex items-center justify-between group shadow-card"
         >
           <div>
-            <div className="text-xs font-bold text-white group-hover:text-indigo-300 transition">
+            <div className="text-xs font-bold text-text-primary group-hover:text-indigo-300 transition">
               Deterministic SEO Insights
             </div>
-            <div className="text-[11px] text-slate-400 mt-0.5">
+            <div className="text-[11px] text-text-muted mt-0.5">
               Data-backed findings, ratio warnings, and tactical next steps
             </div>
           </div>
-          <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition" />
+          <ArrowRight className="w-4 h-4 text-text-muted group-hover:text-indigo-400 group-hover:translate-x-0.5 transition" />
         </button>
       </div>
     </div>

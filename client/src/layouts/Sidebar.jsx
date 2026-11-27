@@ -279,6 +279,8 @@ export const Sidebar = () => {
                             className={`px-1.5 py-0.2 rounded-md text-[10px] font-semibold ${
                               item.badge === 'New'
                                 ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                                : item.badge === 'AI'
+                                ? 'bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-mono'
                                 : 'bg-white/[0.06] text-text-muted'
                             }`}
                           >

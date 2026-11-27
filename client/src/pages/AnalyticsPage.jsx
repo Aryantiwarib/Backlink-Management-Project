@@ -162,8 +162,8 @@ export const AnalyticsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-      {/* Sticky Header with Date Filters & Action Buttons */}
+    <div className="space-y-6 animate-fade-in">
+      {/* Header with Date Filters & Action Buttons */}
       <AnalyticsHeader
         dateRange={dateRange}
         setDateRange={setDateRange}
@@ -177,73 +177,71 @@ export const AnalyticsPage = () => {
         onExportCsv={handleExportCsv}
       />
 
-      <div className="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
-        {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-slate-800 pb-2 overflow-x-auto">
-          {TABS.map((tab) => {
-            const Icon = tab.icon;
-            const active = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
-                  active
-                    ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-                }`}
-              >
-                <Icon className={`w-3.5 h-3.5 ${active ? 'text-indigo-400' : 'text-slate-400'}`} />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Tab Content Display */}
-        {loadingOverview && !overviewData ? (
-          <div className="h-64 flex flex-col items-center justify-center text-slate-400">
-            <Loader2 className="w-8 h-8 animate-spin text-indigo-400 mb-2" />
-            <div className="text-xs">Computing real-time analytics...</div>
-          </div>
-        ) : overviewError ? (
-          <div className="p-6 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 flex-shrink-0" />
-            <span>{overviewError.message || 'Failed to load analytics.'}</span>
-          </div>
-        ) : (
-          <div>
-            {activeTab === 'overview' && (
-              <div className="space-y-8">
-                <AnalyticsOverviewTab overviewData={overviewData} onSelectTab={setActiveTab} />
-                <div className="pt-4 border-t border-slate-800">
-                  <SeoInsightsSection insightsData={insightsData} />
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'backlinks' && (
-              <BacklinkAnalyticsTab backlinkData={backlinkData} />
-            )}
-
-            {activeTab === 'campaigns' && (
-              <CampaignAnalyticsTab campaignData={campaignData} />
-            )}
-
-            {activeTab === 'prospects' && (
-              <ProspectAnalyticsTab prospectData={prospectData} />
-            )}
-
-            {activeTab === 'outreach' && (
-              <OutreachAnalyticsTab outreachData={outreachData} />
-            )}
-
-            {activeTab === 'insights' && (
-              <SeoInsightsSection insightsData={insightsData} />
-            )}
-          </div>
-        )}
+      {/* Navigation Tabs */}
+      <div className="flex items-center gap-2 border-b border-white/[0.06] pb-2 overflow-x-auto">
+        {TABS.map((tab) => {
+          const Icon = tab.icon;
+          const active = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                active
+                  ? 'bg-gradient-to-r from-blue-600/15 via-indigo-600/15 to-purple-600/15 text-indigo-300 border border-indigo-500/30 shadow-sm'
+                  : 'text-text-muted hover:text-text-primary hover:bg-white/[0.04] border border-transparent'
+              }`}
+            >
+              <Icon className={`w-3.5 h-3.5 ${active ? 'text-indigo-400' : 'text-text-muted'}`} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
+
+      {/* Tab Content Display */}
+      {loadingOverview && !overviewData ? (
+        <div className="h-64 flex flex-col items-center justify-center text-text-muted bg-[#15191E] rounded-2xl border border-white/[0.06]">
+          <Loader2 className="w-8 h-8 animate-spin text-indigo-400 mb-2" />
+          <div className="text-xs">Computing real-time analytics...</div>
+        </div>
+      ) : overviewError ? (
+        <div className="p-6 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 flex-shrink-0 text-rose-400" />
+          <span>{overviewError.message || 'Failed to load analytics.'}</span>
+        </div>
+      ) : (
+        <div>
+          {activeTab === 'overview' && (
+            <div className="space-y-8">
+              <AnalyticsOverviewTab overviewData={overviewData} onSelectTab={setActiveTab} />
+              <div className="pt-6 border-t border-white/[0.06]">
+                <SeoInsightsSection insightsData={insightsData} />
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'backlinks' && (
+            <BacklinkAnalyticsTab backlinkData={backlinkData} />
+          )}
+
+          {activeTab === 'campaigns' && (
+            <CampaignAnalyticsTab campaignData={campaignData} />
+          )}
+
+          {activeTab === 'prospects' && (
+            <ProspectAnalyticsTab prospectData={prospectData} />
+          )}
+
+          {activeTab === 'outreach' && (
+            <OutreachAnalyticsTab outreachData={outreachData} />
+          )}
+
+          {activeTab === 'insights' && (
+            <SeoInsightsSection insightsData={insightsData} />
+          )}
+        </div>
+      )}
 
       {/* Executive Report Modal */}
       <ExecutiveReportModal

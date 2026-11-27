@@ -40,7 +40,7 @@ export const MarkdownMessage = ({ content = '' }) => {
             >
               <div className="flex items-center justify-between px-3.5 py-1.5 bg-white/[0.02] border-b border-white/[0.06] text-text-muted text-[11px]">
                 <div className="flex items-center gap-1.5">
-                  <Terminal className="w-3.5 h-3.5 text-emerald-400" />
+                  <Terminal className="w-3.5 h-3.5 text-indigo-400" />
                   <span>{language || 'code'}</span>
                 </div>
                 <button
@@ -50,8 +50,8 @@ export const MarkdownMessage = ({ content = '' }) => {
                 >
                   {copiedIndex === partIdx ? (
                     <>
-                      <Check className="w-3 h-3 text-emerald-400" />
-                      <span className="text-emerald-400 font-semibold">Copied</span>
+                      <Check className="w-3 h-3 text-indigo-400" />
+                      <span className="text-indigo-400 font-semibold">Copied</span>
                     </>
                   ) : (
                     <>
@@ -61,7 +61,7 @@ export const MarkdownMessage = ({ content = '' }) => {
                   )}
                 </button>
               </div>
-              <pre className="p-3.5 overflow-x-auto text-emerald-300 whitespace-pre">
+              <pre className="p-3.5 overflow-x-auto text-indigo-300 whitespace-pre">
                 <code>{codeBody.trim()}</code>
               </pre>
             </div>
@@ -195,7 +195,7 @@ function renderMarkdownParagraphs(text) {
     // Headers
     if (trimmed.startsWith('### ')) {
       elements.push(
-        <h3 key={i} className="text-sm sm:text-base font-bold text-text-primary mt-3 mb-1 text-emerald-400">
+        <h3 key={i} className="text-sm sm:text-base font-bold text-text-primary mt-3 mb-1 text-indigo-400">
           {parseInlineFormatting(trimmed.slice(4))}
         </h3>
       );
@@ -221,7 +221,7 @@ function renderMarkdownParagraphs(text) {
     // Blockquote
     if (trimmed.startsWith('> ')) {
       elements.push(
-        <blockquote key={i} className="pl-3.5 border-l-2 border-emerald-500/50 italic text-text-muted my-2">
+        <blockquote key={i} className="pl-3.5 border-l-2 border-indigo-500/50 italic text-text-muted my-2">
           {parseInlineFormatting(trimmed.slice(2))}
         </blockquote>
       );
@@ -260,7 +260,7 @@ function parseInlineFormatting(text) {
       return (
         <code
           key={index}
-          className="px-1.5 py-0.5 rounded-md bg-white/[0.08] text-emerald-400 font-mono text-[11px] sm:text-xs font-medium"
+          className="px-1.5 py-0.5 rounded-md bg-white/[0.08] text-indigo-300 font-mono text-[11px] sm:text-xs font-medium"
         >
           {part.slice(1, -1)}
         </code>
@@ -286,7 +286,7 @@ function parseInlineFormatting(text) {
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-emerald-400 underline hover:text-emerald-300 font-medium transition-colors"
+          className="text-indigo-400 underline hover:text-indigo-300 font-medium transition-colors"
         >
           {label}
         </a>
