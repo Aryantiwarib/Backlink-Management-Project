@@ -23,6 +23,7 @@ import { DiscoveredProspectsTable } from '../components/prospecting/DiscoveredPr
 import { SavedProspectsTable } from '../components/prospecting/SavedProspectsTable';
 import { ProspectDetailModal } from '../components/prospecting/ProspectDetailModal';
 import { ProviderSetupGuideModal } from '../components/prospecting/ProviderSetupGuideModal';
+import { AiEmailStudioModal } from '../components/outreach/AiEmailStudioModal';
 
 export const LinkProspectingPage = () => {
   const { activeWebsite, websites, loading: websitesLoading } = useWebsite();
@@ -50,6 +51,8 @@ export const LinkProspectingPage = () => {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedProspect, setSelectedProspect] = useState(null);
   const [setupGuideOpen, setSetupGuideOpen] = useState(false);
+  const [aiStudioOpen, setAiStudioOpen] = useState(false);
+  const [aiStudioProspect, setAiStudioProspect] = useState(null);
 
   // React Query: Prospect Stats (cached across navigations)
   const {
@@ -235,6 +238,11 @@ export const LinkProspectingPage = () => {
   const handleViewDetails = (prospect) => {
     setSelectedProspect(prospect);
     setDetailModalOpen(true);
+  };
+
+  const handleDraftEmail = (prospect) => {
+    setAiStudioProspect(prospect);
+    setAiStudioOpen(true);
   };
 
   // Handle modal update
@@ -444,6 +452,7 @@ export const LinkProspectingPage = () => {
           onBulkDelete={handleBulkDelete}
           onExportCsv={handleExportCsv}
           onViewDetails={handleViewDetails}
+          onDraftEmail={handleDraftEmail}
         />
       )}
 
@@ -454,6 +463,7 @@ export const LinkProspectingPage = () => {
         onClose={() => setDetailModalOpen(false)}
         onUpdate={handleModalUpdate}
         onDelete={handleDeleteProspect}
+        onDraftEmail={handleDraftEmail}
       />
 
       {/* Provider Setup Guide Modal */}
@@ -461,6 +471,21 @@ export const LinkProspectingPage = () => {
         isOpen={setupGuideOpen}
         onClose={() => setSetupGuideOpen(false)}
       />
+
+      {/* AI Outreach Email Studio Modal */}
+      {aiStudioOpen && (
+        <AiEmailStudioModal
+          isOpen={aiStudioOpen}
+          onClose={() => {
+            setAiStudioOpen(false);
+            setAiStudioProspect(null);
+          }}
+          initialProspect={aiStudioProspect}
+          initialRecipientWebsite={aiStudioProspect?.prospectDomain}
+          initialRecipientName={aiStudioProspect?.contactEmails?.[0]?.name || ''}
+          initialRecipientEmail={aiStudioProspect?.contactEmail || aiStudioProspect?.contactEmails?.[0]?.email || ''}
+        />
+      )}
     </div>
   );
 };

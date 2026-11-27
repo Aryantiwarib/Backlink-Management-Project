@@ -25,6 +25,7 @@ import { campaignApi } from '../api/campaignService';
 import { ConnectedAccountCard } from '../components/outreach/ConnectedAccountCard';
 import { TemplateManagerModal } from '../components/outreach/TemplateManagerModal';
 import { EmailComposerModal } from '../components/outreach/EmailComposerModal';
+import { AiEmailStudioModal } from '../components/outreach/AiEmailStudioModal';
 import { OutreachQueueTable } from '../components/outreach/OutreachQueueTable';
 import { FollowUpList } from '../components/outreach/FollowUpList';
 import { FollowUpScheduleModal } from '../components/outreach/FollowUpScheduleModal';
@@ -46,6 +47,8 @@ export const OutreachEmailPage = () => {
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [queueFilter, setQueueFilter] = useState('all');
   const [composerOpen, setComposerOpen] = useState(false);
+  const [aiStudioOpen, setAiStudioOpen] = useState(false);
+  const [composerInitialData, setComposerInitialData] = useState(null);
   const [followUpModalOpen, setFollowUpModalOpen] = useState(false);
   const [selectedAssignmentForFollowUp, setSelectedAssignmentForFollowUp] = useState(null);
   const [followUpRefreshTrigger, setFollowUpRefreshTrigger] = useState(0);
@@ -290,6 +293,16 @@ export const OutreachEmailPage = () => {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* AI Email Studio Button */}
+          <button
+            onClick={() => setAiStudioOpen(true)}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-semibold shadow-glow-brand transition-all"
+            title="Open AI Outreach Email Studio"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>AI Email Studio</span>
+          </button>
+
           {/* Manage Templates Button */}
           <button
             onClick={() => setTemplateModalOpen(true)}
@@ -301,7 +314,10 @@ export const OutreachEmailPage = () => {
 
           {/* Primary Compose Button */}
           <button
-            onClick={() => setComposerOpen(true)}
+            onClick={() => {
+              setComposerInitialData(null);
+              setComposerOpen(true);
+            }}
             disabled={!accountStatus?.connected || campaigns.length === 0}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:hover:bg-emerald-600 text-white text-xs font-medium shadow-lg shadow-emerald-900/20 transition-all duration-200"
           >
@@ -551,13 +567,35 @@ export const OutreachEmailPage = () => {
       {composerOpen && (
         <EmailComposerModal
           isOpen={composerOpen}
-          onClose={() => setComposerOpen(false)}
+          onClose={() => {
+            setComposerOpen(false);
+            setComposerInitialData(null);
+          }}
           campaign={currentCampaign}
           prospects={campaignProspects}
           templates={templates}
           connectedAccount={accountStatus}
           onSend={handleSendEmails}
           onPreview={handlePreviewEmails}
+          initialSubject={composerInitialData?.subject || ''}
+          initialBody={composerInitialData?.body || ''}
+        />
+      )}
+
+      {/* AI Outreach Email Studio Modal */}
+      {aiStudioOpen && (
+        <AiEmailStudioModal
+          isOpen={aiStudioOpen}
+          onClose={() => setAiStudioOpen(false)}
+          campaigns={campaigns}
+          initialCampaign={currentCampaign}
+          onApplyDraft={({ subject, body, campaignId }) => {
+            if (campaignId && campaignId !== selectedCampaignId) {
+              setSelectedCampaignId(campaignId);
+            }
+            setComposerInitialData({ subject, body });
+            setComposerOpen(true);
+          }}
         />
       )}
 

@@ -17,6 +17,7 @@ import prospectRoutes from './routes/prospectRoutes.js';
 import outreachRoutes from './routes/outreachRoutes.js';
 import assistantRoutes from './routes/assistantRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
+import aiEmailRoutes from './routes/aiEmailRoutes.js';
 import { ensureAuthenticated } from './middleware/authMiddleware.js';
 
 const app = express();
@@ -122,6 +123,8 @@ app.use('/api/outreach', outreachRoutes);
 app.use('/api/assistant', ensureAuthenticated, assistantRoutes);
 app.use('/api/analytics', ensureAuthenticated, analyticsRoutes);
 app.use('/api/reports', ensureAuthenticated, analyticsRoutes);
+app.use('/api/ai-email', ensureAuthenticated, aiEmailRoutes);
+app.use('/api/outreach/ai', ensureAuthenticated, aiEmailRoutes);
 
 // 404 Handler for undefined API routes
 app.use('/api/*', (req, res) => {

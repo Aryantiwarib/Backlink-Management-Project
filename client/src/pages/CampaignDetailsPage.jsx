@@ -39,6 +39,7 @@ import { CampaignProspectSelectorModal } from '../components/campaigns/CampaignP
 import { EditCampaignModal } from '../components/campaigns/EditCampaignModal';
 import { ContactManagerModal } from '../components/campaigns/ContactManagerModal';
 import { EmailComposerModal } from '../components/outreach/EmailComposerModal';
+import { AiEmailStudioModal } from '../components/outreach/AiEmailStudioModal';
 import { OutreachQueueTable } from '../components/outreach/OutreachQueueTable';
 import { FollowUpList } from '../components/outreach/FollowUpList';
 import { FollowUpScheduleModal } from '../components/outreach/FollowUpScheduleModal';
@@ -72,6 +73,9 @@ export const CampaignDetailsPage = () => {
   // Outreach Filter (Phase 11)
   const [outreachFilter, setOutreachFilter] = useState('all');
   const [composerOpen, setComposerOpen] = useState(false);
+  const [composerInitialData, setComposerInitialData] = useState(null);
+  const [aiStudioOpen, setAiStudioOpen] = useState(false);
+  const [aiStudioProspect, setAiStudioProspect] = useState(null);
   const [followUpModalOpen, setFollowUpModalOpen] = useState(false);
   const [selectedAssignmentForFollowUp, setSelectedAssignmentForFollowUp] = useState(null);
   const [followUpRefreshTrigger, setFollowUpRefreshTrigger] = useState(0);
@@ -939,6 +943,18 @@ export const CampaignDetailsPage = () => {
 
         <div className="flex items-center gap-2 shrink-0">
           <button
+            onClick={() => {
+              setAiStudioProspect(null);
+              setAiStudioOpen(true);
+            }}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-semibold shadow-glow-brand transition-all"
+            title="Open AI Outreach Email Studio"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>AI Email Studio</span>
+          </button>
+
+          <button
             onClick={() => setComposerOpen(true)}
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-text-secondary hover:text-white border border-white/[0.08] text-xs font-medium transition-colors"
           >
@@ -1161,6 +1177,7 @@ export const CampaignDetailsPage = () => {
           onClose={() => {
             setComposerOpen(false);
             setComposerPreselectedProspects([]);
+            setComposerInitialData(null);
           }}
           campaign={campaign}
           prospects={
@@ -1172,6 +1189,32 @@ export const CampaignDetailsPage = () => {
           connectedAccount={accountStatus}
           onSend={handleSendOutreach}
           onPreview={handlePreviewOutreach}
+          initialSubject={composerInitialData?.subject || ''}
+          initialBody={composerInitialData?.body || ''}
+        />
+      )}
+
+      {/* Modal: AI Email Studio */}
+      {aiStudioOpen && (
+        <AiEmailStudioModal
+          isOpen={aiStudioOpen}
+          onClose={() => {
+            setAiStudioOpen(false);
+            setAiStudioProspect(null);
+          }}
+          initialCampaign={campaign}
+          initialProspect={aiStudioProspect}
+          initialRecipientWebsite={aiStudioProspect?.prospectDomain || ''}
+          initialRecipientName={aiStudioProspect?.contactEmails?.[0]?.name || ''}
+          initialRecipientEmail={aiStudioProspect?.contactEmail || aiStudioProspect?.contactEmails?.[0]?.email || ''}
+          campaigns={campaign ? [campaign] : []}
+          onApplyDraft={({ subject: draftSub, body: draftBody, prospect }) => {
+            if (prospect) {
+              setComposerPreselectedProspects([prospect]);
+            }
+            setComposerInitialData({ subject: draftSub, body: draftBody });
+            setComposerOpen(true);
+          }}
         />
       )}
 

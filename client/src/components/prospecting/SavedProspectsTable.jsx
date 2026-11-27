@@ -13,7 +13,8 @@ import {
   Globe,
   FileText,
   Edit2,
-  Check
+  Check,
+  Sparkles
 } from 'lucide-react';
 
 export const SavedProspectsTable = ({
@@ -28,7 +29,8 @@ export const SavedProspectsTable = ({
   onBulkUpdateStatus,
   onBulkDelete,
   onExportCsv,
-  onViewDetails
+  onViewDetails,
+  onDraftEmail = null
 }) => {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
@@ -415,6 +417,17 @@ export const SavedProspectsTable = ({
                     {/* Action buttons */}
                     <td className="py-3.5 px-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
+                        {onDraftEmail && (
+                          <button
+                            type="button"
+                            onClick={() => onDraftEmail(prospect)}
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 text-[11px] font-medium transition-colors"
+                            title="Draft outreach email with AI Studio"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            <span>Pitch</span>
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => onViewDetails(prospect)}

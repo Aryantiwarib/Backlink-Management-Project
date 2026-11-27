@@ -20,7 +20,8 @@ export const ProspectDetailModal = ({
   isOpen,
   onClose,
   onUpdate,
-  onDelete
+  onDelete,
+  onDraftEmail = null
 }) => {
   const [status, setStatus] = useState('saved');
   const [notes, setNotes] = useState('');
@@ -282,6 +283,19 @@ export const ProspectDetailModal = ({
           )}
 
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                if (onDraftEmail) onDraftEmail(prospect);
+              }}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold text-xs transition-colors shadow-glow-brand"
+              title="Draft personalized outreach email with AI"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Draft AI Email</span>
+            </button>
+
             {savedSuccess && (
               <span className="text-xs text-emerald-400 flex items-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5" />
@@ -291,7 +305,7 @@ export const ProspectDetailModal = ({
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-semibold text-xs shadow-md shadow-emerald-500/20 transition-all disabled:opacity-50"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-black font-semibold text-xs shadow-glow-brand transition-all disabled:opacity-50"
             >
               <Save className="w-3.5 h-3.5" />
               <span>{saving ? 'Saving...' : 'Save Changes'}</span>
