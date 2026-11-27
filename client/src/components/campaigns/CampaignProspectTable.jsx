@@ -32,6 +32,9 @@ const OUTREACH_OPTIONS = [
 export const CampaignProspectTable = ({
   assignments = [],
   loading = false,
+  campaignId = null,
+  campaignName = '',
+  websiteId = null,
   onUpdateStatus,
   onUpdateAssignment,
   onRemoveAssignment,
@@ -564,7 +567,9 @@ export const CampaignProspectTable = ({
           isOpen={generateMailOpen}
           onClose={() => setGenerateMailOpen(false)}
           selectedProspects={assignments.filter((a) => selectedIds.has(getAssignmentId(a)))}
-          campaignId={assignments[0]?.campaignId || null}
+          campaignId={campaignId || assignments[0]?.campaignId || null}
+          campaignName={campaignName}
+          websiteId={websiteId}
         />
       )}
     </div>

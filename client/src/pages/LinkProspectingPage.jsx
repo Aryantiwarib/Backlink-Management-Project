@@ -453,6 +453,7 @@ export const LinkProspectingPage = () => {
           onExportCsv={handleExportCsv}
           onViewDetails={handleViewDetails}
           onDraftEmail={handleDraftEmail}
+          websiteId={siteId}
         />
       )}
 

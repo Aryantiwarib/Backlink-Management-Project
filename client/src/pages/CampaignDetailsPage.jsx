@@ -1038,6 +1038,9 @@ export const CampaignDetailsPage = () => {
             onSendOutreach={handleSendOutreachFromTable}
             onRerunDiscovery={handleRunDiscoveryAgain}
             onEditCriteria={() => setEditModalOpen(true)}
+            campaignId={campaignId}
+            campaignName={campaign?.name}
+            websiteId={siteId}
           />
 
           {/* Prospects Pagination */}

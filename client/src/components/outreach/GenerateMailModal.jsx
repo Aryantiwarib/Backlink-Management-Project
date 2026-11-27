@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Sparkles,
@@ -385,8 +386,8 @@ export const GenerateMailModal = ({
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
+  const modalContent = (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md overflow-y-auto">
       <div className="relative w-full max-w-5xl my-auto rounded-2xl bg-[#15191E] border border-white/[0.1] shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
         {/* MODAL HEADER */}
         <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-white/[0.08] bg-[#101419] shrink-0">
@@ -1105,6 +1106,12 @@ export const GenerateMailModal = ({
       )}
     </div>
   );
+
+  if (typeof document !== 'undefined' && document.body) {
+    return createPortal(modalContent, document.body);
+  }
+
+  return modalContent;
 };
 
 export default GenerateMailModal;

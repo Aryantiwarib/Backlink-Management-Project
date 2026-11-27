@@ -32,7 +32,9 @@ export const SavedProspectsTable = ({
   onBulkDelete,
   onExportCsv,
   onViewDetails,
-  onDraftEmail = null
+  onDraftEmail = null,
+  websiteId = null,
+  onSelectionChange = null
 }) => {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
@@ -40,20 +42,30 @@ export const SavedProspectsTable = ({
   const [generateMailOpen, setGenerateMailOpen] = useState(false);
   const [modalProspects, setModalProspects] = useState([]);
 
-  const toggleSelect = (id) => {
+  const getProspectId = (p) => String(p?._id || p?.id || p || '');
+
+  const toggleSelect = (rawId) => {
+    const id = String(rawId);
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
+      if (onSelectionChange) {
+        const selectedList = prospects.filter((p) => next.has(getProspectId(p)));
+        onSelectionChange(next, selectedList);
+      }
       return next;
     });
   };
 
   const selectAll = () => {
-    if (selectedIds.size === prospects.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(prospects.map((p) => p.id)));
+    const allIds = prospects.map(getProspectId).filter(Boolean);
+    const allSelected = allIds.length > 0 && allIds.every((id) => selectedIds.has(id));
+    const next = allSelected ? new Set() : new Set(allIds);
+    setSelectedIds(next);
+    if (onSelectionChange) {
+      const selectedList = allSelected ? [] : prospects;
+      onSelectionChange(next, selectedList);
     }
   };
 
@@ -219,7 +231,7 @@ export const SavedProspectsTable = ({
               <button
                 type="button"
                 onClick={() => {
-                  const selected = prospects.filter((p) => selectedIds.has(p.id || p._id));
+                  const selected = prospects.filter((p) => selectedIds.has(getProspectId(p)));
                   setModalProspects(selected);
                   setGenerateMailOpen(true);
                 }}
@@ -284,7 +296,10 @@ export const SavedProspectsTable = ({
               <th className="py-3 px-4 w-10">
                 <input
                   type="checkbox"
-                  checked={prospects.length > 0 && selectedIds.size === prospects.length}
+                  checked={
+                    prospects.length > 0 &&
+                    prospects.every((p) => selectedIds.has(getProspectId(p)))
+                  }
                   onChange={selectAll}
                   disabled={prospects.length === 0}
                   className="rounded border-white/[0.2] bg-[#0D1117] text-emerald-500 focus:ring-0 cursor-pointer"
@@ -323,11 +338,12 @@ export const SavedProspectsTable = ({
               </tr>
             ) : (
               prospects.map((prospect) => {
-                const isSelected = selectedIds.has(prospect.id);
+                const pId = getProspectId(prospect);
+                const isSelected = selectedIds.has(pId);
 
                 return (
                   <tr
-                    key={prospect.id}
+                    key={pId}
                     className={`hover:bg-white/[0.015] transition-colors ${
                       isSelected ? 'bg-emerald-500/[0.03]' : ''
                     }`}
@@ -336,7 +352,7 @@ export const SavedProspectsTable = ({
                       <input
                         type="checkbox"
                         checked={isSelected}
-                        onChange={() => toggleSelect(prospect.id)}
+                        onChange={() => toggleSelect(pId)}
                         className="rounded border-white/[0.2] bg-[#0D1117] text-emerald-500 focus:ring-0 cursor-pointer"
                       />
                     </td>
@@ -499,7 +515,7 @@ export const SavedProspectsTable = ({
       <FloatingGenerateMailButton
         selectedCount={selectedIds.size}
         onClick={() => {
-          const selected = prospects.filter((p) => selectedIds.has(p.id || p._id));
+          const selected = prospects.filter((p) => selectedIds.has(getProspectId(p)));
           setModalProspects(selected);
           setGenerateMailOpen(true);
         }}
@@ -516,8 +532,9 @@ export const SavedProspectsTable = ({
           selectedProspects={
             modalProspects.length > 0
               ? modalProspects
-              : prospects.filter((p) => selectedIds.has(p.id || p._id))
+              : prospects.filter((p) => selectedIds.has(getProspectId(p)))
           }
+          websiteId={websiteId}
         />
       )}
     </div>
