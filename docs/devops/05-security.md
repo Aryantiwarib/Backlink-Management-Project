@@ -77,7 +77,7 @@ flowchart LR
 ### 3.2 Trivy in GitHub Actions
 ```yaml
 - name: Run Trivy Vulnerability Scanner (Repo & Dependencies)
-  uses: aquasecurity/trivy-action@0.29.0
+  uses: aquasecurity/trivy-action@v0.29.0
   with:
     scan-type: 'fs'
     scan-ref: '.'

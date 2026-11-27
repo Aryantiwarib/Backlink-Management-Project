@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: staging
-      url: ${{ vars.STAGING_CLIENT_URL || 'https://staging.linkora.io' }}
+      url: ${{ vars.STAGING_CLIENT_URL }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -38,12 +38,14 @@ jobs:
           fi
 
   # ---------------------------------------------------------------------------
-  # 2. Phase 9: Playwright Staging Automated Smoke Test Gate
+  # 2. Playwright Staging Automated Smoke Test Gate
   # ---------------------------------------------------------------------------
   staging-smoke-gate:
     name: Playwright Staging Smoke Test Gate
     needs: deploy-staging
     runs-on: ubuntu-latest
+    environment:
+      name: staging
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -55,25 +57,39 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm ci
+        run: |
+          npm ci
+          npm --prefix server ci
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
 
       - name: Run Playwright Smoke Tests against Staging
         env:
-          BASE_URL: ${{ vars.STAGING_CLIENT_URL || 'http://localhost:5173' }}
-          BACKEND_URL: ${{ vars.STAGING_BACKEND_URL || 'http://localhost:5002' }}
+          BASE_URL: ${{ vars.STAGING_CLIENT_URL }}
+          BACKEND_URL: ${{ vars.STAGING_BACKEND_URL }}
           CI: true
         run: |
-          echo "🧪 Running Playwright Smoke Tests against Staging: $BASE_URL..."
-          # If staging environment is reachable, execute live tests; otherwise run localized verification
-          if curl -s -f --connect-timeout 5 "$BACKEND_URL/api/health" > /dev/null 2>&1; then
-            npm run test:e2e
-          else
-            echo "⚠️ Staging live URL unreachable or offline. Running unit & integration verification fallback."
+          if [ -z "$BASE_URL" ] || [ -z "$BACKEND_URL" ]; then
+            echo "⚠️ Staging URL configuration missing: STAGING_CLIENT_URL and/or STAGING_BACKEND_URL are not set."
+            echo "👉 To enable live staging smoke testing, please configure these variables in GitHub Repository Settings under Settings > Environments > staging (or Settings > Secrets and variables > Actions > Variables):"
+            echo "     - STAGING_CLIENT_URL (e.g., https://your-staging-frontend.onrender.com or https://your-staging.vercel.app)"
+            echo "     - STAGING_BACKEND_URL (e.g., https://your-staging-api.onrender.com)"
+            echo "🔄 Running localized unit and integration tests as fallback gate..."
             npm run test:unit
             npm run test:integration
+            exit 0
+          fi
+
+          echo "🧪 Running Playwright Smoke Tests against Staging Frontend: $BASE_URL..."
+          echo "🩺 Probing Staging Backend at: $BACKEND_URL/api/health..."
+          if curl -s -f --connect-timeout 10 "$BACKEND_URL/api/health" > /dev/null 2>&1; then
+            echo "✅ Staging backend is healthy. Executing Playwright E2E smoke suite..."
+            npm run test:e2e
+          else
+            echo "❌ Staging backend health check failed at $BACKEND_URL/api/health (service unreachable or timed out)."
+            echo "👉 Ensure your staging service is deployed and running before rerunning."
+            exit 1
           fi
 
       - name: Upload Playwright Test Report

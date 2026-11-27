@@ -71,7 +71,7 @@ flowchart TD
 - **Purpose**: Catches broken Alpine packages, missing files in `.dockerignore`, or Nginx configuration errors before code merges.
 
 ### 3.5 Job 5: `security` (Trivy Vulnerability Scan)
-- **Action**: `aquasecurity/trivy-action@0.29.0`.
+- **Action**: `aquasecurity/trivy-action@v0.29.0`.
 - **Scope**: Filesystem repository scan, checking npm dependencies for known CRITICAL and HIGH severity CVEs.
 
 ---

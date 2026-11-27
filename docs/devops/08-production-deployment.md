@@ -34,8 +34,8 @@ To configure the manual approval gate:
 4. Set **Deployment branches**: Restrict to `main` only.
 5. Configure environment secrets:
    - `PRODUCTION_DEPLOY_WEBHOOK`: Automated deploy hook URL from your cloud hosting platform.
-   - `PRODUCTION_CLIENT_URL`: `https://linkora.io`.
-   - `PRODUCTION_BACKEND_URL`: `https://api.linkora.io`.
+   - `PRODUCTION_CLIENT_URL`: Public URL of the production web application (e.g. `https://app.yourdomain.com`).
+   - `PRODUCTION_BACKEND_URL`: Public URL of the production backend API (e.g. `https://api.yourdomain.com`).
 
 ---
 

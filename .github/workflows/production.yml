@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: production
-      url: ${{ vars.PRODUCTION_CLIENT_URL || 'https://linkora.io' }}
+      url: ${{ vars.PRODUCTION_CLIENT_URL }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -46,14 +46,21 @@ jobs:
     name: Post-Deployment Health Check
     needs: deploy-production
     runs-on: ubuntu-latest
+    environment:
+      name: production
     steps:
       - name: Verify Live Production Health Check
         env:
-          PRODUCTION_BACKEND_URL: ${{ vars.PRODUCTION_BACKEND_URL || 'http://localhost:5002' }}
+          PRODUCTION_BACKEND_URL: ${{ vars.PRODUCTION_BACKEND_URL }}
         run: |
+          if [ -z "$PRODUCTION_BACKEND_URL" ]; then
+            echo "ℹ️  PRODUCTION_BACKEND_URL variable not configured. Skipping remote health check probe."
+            exit 0
+          fi
           echo "🩺 Checking production health endpoint at $PRODUCTION_BACKEND_URL/api/health..."
           if curl -s -f --connect-timeout 10 "$PRODUCTION_BACKEND_URL/api/health" > /dev/null 2>&1; then
             echo "✅ Production API is responsive and healthy!"
           else
-            echo "ℹ️  Production health endpoint not reachable from runner network or using placeholder URL."
+            echo "❌ Production health check failed at $PRODUCTION_BACKEND_URL/api/health."
+            exit 1
           fi

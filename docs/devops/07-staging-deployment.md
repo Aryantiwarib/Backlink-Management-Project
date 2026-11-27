@@ -30,9 +30,9 @@ In GitHub repository settings under **Settings > Environments > `staging`**, the
 
 | Name | Type | Description |
 | :--- | :--- | :--- |
-| `STAGING_DEPLOY_WEBHOOK` | Secret | Deploy hook URL provided by cloud hosting (e.g., Render or Railway deploy hook) |
-| `STAGING_CLIENT_URL` | Variable | Public URL of the staging web app (e.g. `https://staging.linkora.io`) |
-| `STAGING_BACKEND_URL` | Variable | Public URL of the staging backend API (e.g. `https://api-staging.linkora.io`) |
+| `STAGING_DEPLOY_WEBHOOK` | Secret | Deploy hook URL provided by cloud hosting (e.g., Render, Railway, or Vercel deploy hook) |
+| `STAGING_CLIENT_URL` | Variable | Public URL of the staging web app (e.g. `https://your-staging-frontend.onrender.com` or `https://your-staging.vercel.app`) |
+| `STAGING_BACKEND_URL` | Variable | Public URL of the staging backend API (e.g. `https://your-staging-api.onrender.com`) |
 
 ---
 
