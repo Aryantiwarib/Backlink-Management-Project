@@ -20,16 +20,16 @@ const KPI_CONFIG = [
     key: 'totalBacklinks',
     label: 'Total Backlinks',
     icon: Link2,
-    iconColor: 'text-blue-400',
-    bgColor: 'bg-blue-500/10 border-blue-500/20',
+    iconColor: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/10 border-emerald-500/20',
     description: 'Moz Global Index external links'
   },
   {
     key: 'referringDomains',
     label: 'Referring Domains',
     icon: Globe2,
-    iconColor: 'text-indigo-400',
-    bgColor: 'bg-indigo-500/10 border-indigo-500/20',
+    iconColor: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/10 border-emerald-500/20',
     description: 'Unique root domains linking to site'
   },
   {
@@ -44,8 +44,8 @@ const KPI_CONFIG = [
     key: 'pageAuthority',
     label: 'Moz Page Authority',
     icon: Sparkles,
-    iconColor: 'text-cyan-400',
-    bgColor: 'bg-cyan-500/10 border-cyan-500/20',
+    iconColor: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/10 border-emerald-500/20',
     description: 'Root URL ranking strength (0-100)'
   },
   {
@@ -69,16 +69,16 @@ const KPI_CONFIG = [
     key: 'activeCampaigns',
     label: 'Active Campaigns',
     icon: Rocket,
-    iconColor: 'text-amber-400',
-    bgColor: 'bg-amber-500/10 border-amber-500/20',
+    iconColor: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/10 border-emerald-500/20',
     description: 'Currently running link initiatives'
   },
   {
     key: 'qualifiedProspects',
     label: 'Qualified Prospects',
     icon: Target,
-    iconColor: 'text-purple-400',
-    bgColor: 'bg-purple-500/10 border-purple-500/20',
+    iconColor: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/10 border-emerald-500/20',
     description: 'High-opportunity outreach targets'
   }
 ];
@@ -142,11 +142,11 @@ export const AnalyticsOverviewTab = ({ overviewData, onSelectTab }) => {
   return (
     <div className="space-y-6">
       {/* Net Backlink Growth Banner Card */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#15191E] via-indigo-950/30 to-[#15191E] border border-white/[0.08] p-6 shadow-card">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#15191E] via-emerald-950/20 to-[#15191E] border border-white/[0.08] p-6 shadow-card">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div>
             <div className="flex items-center gap-2 mb-1.5">
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-500/15 text-indigo-300 border border-indigo-500/25 font-mono">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
                 Period Net Velocity
               </span>
               <span className="text-xs text-text-muted font-mono">
@@ -239,47 +239,47 @@ export const AnalyticsOverviewTab = ({ overviewData, onSelectTab }) => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
         <button
           onClick={() => onSelectTab('backlinks')}
-          className="bg-[#15191E] hover:bg-white/[0.03] border border-white/[0.06] hover:border-indigo-500/30 rounded-2xl p-4 text-left transition-all flex items-center justify-between group shadow-card"
+          className="bg-[#15191E] hover:bg-white/[0.03] border border-white/[0.06] hover:border-emerald-500/30 rounded-2xl p-4 text-left transition-all flex items-center justify-between group shadow-card"
         >
           <div>
-            <div className="text-xs font-bold text-text-primary group-hover:text-indigo-300 transition">
+            <div className="text-xs font-bold text-text-primary group-hover:text-emerald-400 transition">
               Backlink Growth Analytics
             </div>
             <div className="text-[11px] text-text-muted mt-0.5">
               Historical line charts, new vs lost breakdown, and anchor profiles
             </div>
           </div>
-          <ArrowRight className="w-4 h-4 text-text-muted group-hover:text-indigo-400 group-hover:translate-x-0.5 transition" />
+          <ArrowRight className="w-4 h-4 text-text-muted group-hover:text-emerald-400 group-hover:translate-x-0.5 transition" />
         </button>
 
         <button
           onClick={() => onSelectTab('campaigns')}
-          className="bg-[#15191E] hover:bg-white/[0.03] border border-white/[0.06] hover:border-indigo-500/30 rounded-2xl p-4 text-left transition-all flex items-center justify-between group shadow-card"
+          className="bg-[#15191E] hover:bg-white/[0.03] border border-white/[0.06] hover:border-emerald-500/30 rounded-2xl p-4 text-left transition-all flex items-center justify-between group shadow-card"
         >
           <div>
-            <div className="text-xs font-bold text-text-primary group-hover:text-indigo-300 transition">
+            <div className="text-xs font-bold text-text-primary group-hover:text-emerald-400 transition">
               Campaign & Prospect Performance
             </div>
             <div className="text-[11px] text-text-muted mt-0.5">
               Acquisition progress, outreach pipelines, and discovery rates
             </div>
           </div>
-          <ArrowRight className="w-4 h-4 text-text-muted group-hover:text-indigo-400 group-hover:translate-x-0.5 transition" />
+          <ArrowRight className="w-4 h-4 text-text-muted group-hover:text-emerald-400 group-hover:translate-x-0.5 transition" />
         </button>
 
         <button
           onClick={() => onSelectTab('insights')}
-          className="bg-[#15191E] hover:bg-white/[0.03] border border-white/[0.06] hover:border-indigo-500/30 rounded-2xl p-4 text-left transition-all flex items-center justify-between group shadow-card"
+          className="bg-[#15191E] hover:bg-white/[0.03] border border-white/[0.06] hover:border-emerald-500/30 rounded-2xl p-4 text-left transition-all flex items-center justify-between group shadow-card"
         >
           <div>
-            <div className="text-xs font-bold text-text-primary group-hover:text-indigo-300 transition">
+            <div className="text-xs font-bold text-text-primary group-hover:text-emerald-400 transition">
               Deterministic SEO Insights
             </div>
             <div className="text-[11px] text-text-muted mt-0.5">
               Data-backed findings, ratio warnings, and tactical next steps
             </div>
           </div>
-          <ArrowRight className="w-4 h-4 text-text-muted group-hover:text-indigo-400 group-hover:translate-x-0.5 transition" />
+          <ArrowRight className="w-4 h-4 text-text-muted group-hover:text-emerald-400 group-hover:translate-x-0.5 transition" />
         </button>
       </div>
     </div>

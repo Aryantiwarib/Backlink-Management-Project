@@ -5,7 +5,6 @@ import {
   FileText,
   RefreshCw,
   Globe,
-  SlidersHorizontal,
   ChevronDown,
   Check
 } from 'lucide-react';
@@ -69,7 +68,7 @@ export const AnalyticsHeader = ({
               className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#101318] hover:bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.14] text-xs text-text-primary transition-colors"
               title="Switch Active Website"
             >
-              <Globe className="w-3.5 h-3.5 text-indigo-400" />
+              <Globe className="w-3.5 h-3.5 text-emerald-400" />
               <span className="font-mono font-medium max-w-[140px] truncate">
                 {activeWebsite?.domain || 'Select Website'}
               </span>
@@ -92,7 +91,7 @@ export const AnalyticsHeader = ({
                       }}
                       className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-left transition-colors ${
                         isSelected
-                          ? 'bg-indigo-600/15 text-indigo-300 font-semibold border border-indigo-500/30'
+                          ? 'bg-emerald-500/15 text-emerald-400 font-semibold border border-emerald-500/30'
                           : 'text-text-secondary hover:bg-white/[0.04] hover:text-text-primary'
                       }`}
                     >
@@ -100,7 +99,7 @@ export const AnalyticsHeader = ({
                         <div className="font-mono text-xs truncate">{w.domain}</div>
                         <div className="text-[10px] text-text-muted truncate">{w.name}</div>
                       </div>
-                      {isSelected && <Check className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />}
+                      {isSelected && <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />}
                     </button>
                   );
                 })}
@@ -127,7 +126,7 @@ export const AnalyticsHeader = ({
                   }}
                   className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
                     active
-                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm font-semibold'
+                      ? 'bg-emerald-500 text-black shadow-glow-brand font-semibold'
                       : 'text-text-muted hover:text-text-primary hover:bg-white/[0.04]'
                   }`}
                 >
@@ -144,7 +143,7 @@ export const AnalyticsHeader = ({
             className="p-2 rounded-xl bg-[#101318] hover:bg-white/[0.04] border border-white/[0.07] hover:border-white/[0.14] text-text-muted hover:text-text-primary transition-colors disabled:opacity-50"
             title="Reload analytics data"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-indigo-400' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-emerald-400' : ''}`} />
           </button>
 
           {/* Export CSV Button */}
@@ -160,7 +159,7 @@ export const AnalyticsHeader = ({
           {/* Executive Report Button */}
           <button
             onClick={onOpenReport}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:via-indigo-500 hover:to-purple-500 text-white text-xs font-semibold shadow-md shadow-indigo-950/40 hover:shadow-indigo-500/25 transition-all"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-black text-xs font-semibold shadow-glow-brand transition-all"
             title="Generate print-ready executive report"
           >
             <FileText className="w-3.5 h-3.5" />
@@ -175,7 +174,7 @@ export const AnalyticsHeader = ({
           <div className="bg-[#15191E] border border-white/[0.1] rounded-2xl w-full max-w-sm p-6 shadow-elevated">
             <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
               <h3 className="text-sm font-bold text-text-primary flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-indigo-400" />
+                <Calendar className="w-4 h-4 text-emerald-400" />
                 Select Custom Date Range
               </h3>
               <button
@@ -193,7 +192,7 @@ export const AnalyticsHeader = ({
                   type="date"
                   value={tempStart}
                   onChange={(e) => setTempStart(e.target.value)}
-                  className="w-full bg-[#101318] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-text-primary focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-[#101318] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-text-primary focus:outline-none focus:border-emerald-500"
                 />
               </div>
               <div>
@@ -202,7 +201,7 @@ export const AnalyticsHeader = ({
                   type="date"
                   value={tempEnd}
                   onChange={(e) => setTempEnd(e.target.value)}
-                  className="w-full bg-[#101318] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-text-primary focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-[#101318] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-text-primary focus:outline-none focus:border-emerald-500"
                 />
               </div>
             </div>
@@ -217,7 +216,7 @@ export const AnalyticsHeader = ({
               <button
                 onClick={handleApplyCustom}
                 disabled={!tempStart || !tempEnd}
-                className="px-4 py-1.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white disabled:opacity-50 transition-all shadow-md"
+                className="px-4 py-1.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-black disabled:opacity-50 transition-all shadow-glow-brand"
               >
                 Apply Range
               </button>

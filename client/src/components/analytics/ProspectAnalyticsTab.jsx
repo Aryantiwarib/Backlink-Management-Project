@@ -15,10 +15,7 @@ import {
   Target,
   CheckCircle2,
   MailCheck,
-  Award,
-  Layers,
-  Sparkles,
-  Search
+  Sparkles
 } from 'lucide-react';
 import { formatNumber } from '../../utils/formatters';
 
@@ -60,8 +57,7 @@ export const ProspectAnalyticsTab = ({ prospectData }) => {
     qualificationStatus = { qualified: 0, provisional: 0, rejected: 0, unassessed: 0 },
     contactDiscovery = { emailsFound: 0, totalProspects: 0, contactDiscoveryRate: 0 },
     sources = [],
-    opportunityScoreTiers = [],
-    discoveryTrend = []
+    opportunityScoreTiers = []
   } = prospectData;
 
   const pieData = [
@@ -78,7 +74,7 @@ export const ProspectAnalyticsTab = ({ prospectData }) => {
         <div className="bg-[#15191E] border border-white/[0.06] rounded-2xl p-5 shadow-card">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Total In Pipeline</span>
-            <Target className="w-4 h-4 text-purple-400" />
+            <Target className="w-4 h-4 text-emerald-400" />
           </div>
           <div className="text-2xl font-bold font-mono text-text-primary">{formatNumber(totalProspects)}</div>
           <div className="text-[11px] text-text-muted mt-0.5">Discovered link prospects</div>
@@ -98,9 +94,9 @@ export const ProspectAnalyticsTab = ({ prospectData }) => {
         <div className="bg-[#15191E] border border-white/[0.06] rounded-2xl p-5 shadow-card">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Verified Emails Found</span>
-            <MailCheck className="w-4 h-4 text-indigo-400" />
+            <MailCheck className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="text-2xl font-bold font-mono text-indigo-400">
+          <div className="text-2xl font-bold font-mono text-emerald-400">
             {formatNumber(contactDiscovery.emailsFound)}
           </div>
           <div className="text-[11px] text-text-muted mt-0.5">Ready for direct outreach</div>
@@ -109,14 +105,14 @@ export const ProspectAnalyticsTab = ({ prospectData }) => {
         <div className="bg-[#15191E] border border-white/[0.06] rounded-2xl p-5 shadow-card">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Contact Discovery Rate</span>
-            <Sparkles className="w-4 h-4 text-amber-400" />
+            <Sparkles className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="text-2xl font-bold font-mono text-amber-400">
+          <div className="text-2xl font-bold font-mono text-emerald-400">
             {contactDiscovery.contactDiscoveryRate}%
           </div>
           <div className="w-full bg-[#101318] rounded-full h-1.5 mt-2 overflow-hidden">
             <div
-              className="bg-amber-500 h-full rounded-full transition-all duration-500"
+              className="bg-gradient-to-r from-emerald-500 to-emerald-400 h-full rounded-full transition-all duration-500"
               style={{ width: `${Math.min(100, contactDiscovery.contactDiscoveryRate)}%` }}
             />
           </div>
@@ -189,7 +185,7 @@ export const ProspectAnalyticsTab = ({ prospectData }) => {
                 <XAxis dataKey="tier" stroke="#6B7280" fontSize={10} angle={-15} textAnchor="end" />
                 <YAxis stroke="#6B7280" fontSize={11} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="count" name="Prospects" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="count" name="Prospects" fill="#10B981" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

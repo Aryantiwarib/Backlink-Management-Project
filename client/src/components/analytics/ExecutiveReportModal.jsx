@@ -5,13 +5,7 @@ import {
   X,
   FileText,
   Globe,
-  Calendar,
-  CheckCircle2,
-  Award,
-  Link2,
-  Rocket,
-  Target,
-  Send
+  Calendar
 } from 'lucide-react';
 import { formatNumber } from '../../utils/formatters';
 import { downloadAnalyticsCsv, printExecutiveReport } from '../../utils/exportAnalytics';
@@ -19,7 +13,7 @@ import { downloadAnalyticsCsv, printExecutiveReport } from '../../utils/exportAn
 export const ExecutiveReportModal = ({ isOpen, onClose, reportData }) => {
   if (!isOpen || !reportData) return null;
 
-  const { meta, executiveSummary, kpis, backlinks, campaigns, prospecting, outreach, recommendations } = reportData;
+  const { meta, executiveSummary, kpis, backlinks, recommendations } = reportData;
 
   const handlePrint = () => {
     printExecutiveReport();
@@ -35,7 +29,7 @@ export const ExecutiveReportModal = ({ isOpen, onClose, reportData }) => {
         {/* Modal Top Actions (Hidden in Print) */}
         <div className="print:hidden bg-[#101318] border-b border-white/[0.06] px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-indigo-400" />
+            <FileText className="w-4 h-4 text-emerald-400" />
             <h2 className="text-sm font-bold text-text-primary">Executive SEO Performance Report</h2>
           </div>
           <div className="flex items-center gap-2">
@@ -48,7 +42,7 @@ export const ExecutiveReportModal = ({ isOpen, onClose, reportData }) => {
             </button>
             <button
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:via-indigo-500 hover:to-purple-500 text-xs font-semibold text-white shadow-md shadow-indigo-950/40 hover:shadow-indigo-500/25 transition-all"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-xs font-semibold text-black shadow-glow-brand transition-all"
             >
               <Printer className="w-3.5 h-3.5" />
               Print / Save as PDF
@@ -67,7 +61,7 @@ export const ExecutiveReportModal = ({ isOpen, onClose, reportData }) => {
           {/* Header */}
           <div className="border-b border-white/[0.06] print:border-slate-300 pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <div className="text-[11px] font-bold text-indigo-400 print:text-indigo-600 uppercase tracking-widest mb-1">
+              <div className="text-[11px] font-bold text-emerald-400 print:text-emerald-700 uppercase tracking-widest mb-1">
                 LINKORA Executive SEO Brief
               </div>
               <h1 className="text-2xl font-black text-text-primary print:text-black tracking-tight">
@@ -75,7 +69,7 @@ export const ExecutiveReportModal = ({ isOpen, onClose, reportData }) => {
               </h1>
               <div className="flex items-center gap-3 text-xs text-text-muted print:text-slate-600 mt-1">
                 <span className="flex items-center gap-1">
-                  <Globe className="w-3.5 h-3.5 text-indigo-400" /> {meta?.domain}
+                  <Globe className="w-3.5 h-3.5 text-emerald-400" /> {meta?.domain}
                 </span>
                 <span>•</span>
                 <span>{meta?.url}</span>
@@ -84,7 +78,7 @@ export const ExecutiveReportModal = ({ isOpen, onClose, reportData }) => {
 
             <div className="text-right text-xs text-text-muted print:text-slate-600">
               <div className="flex items-center sm:justify-end gap-1.5 mb-1">
-                <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+                <Calendar className="w-3.5 h-3.5 text-emerald-400" />
                 <span className="font-semibold text-text-primary print:text-black font-mono">
                   Period: {meta?.reportingPeriod}
                 </span>

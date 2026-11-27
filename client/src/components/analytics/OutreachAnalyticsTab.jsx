@@ -17,7 +17,6 @@ import {
   Clock,
   AlertTriangle,
   Calendar,
-  CheckCircle2,
   Eye,
   MousePointer
 } from 'lucide-react';
@@ -88,9 +87,9 @@ export const OutreachAnalyticsTab = ({ outreachData }) => {
         <div className="bg-[#15191E] border border-white/[0.06] rounded-2xl p-5 shadow-card">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Scheduled Follow-Ups</span>
-            <Calendar className="w-4 h-4 text-indigo-400" />
+            <Calendar className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="text-2xl font-bold font-mono text-indigo-400">
+          <div className="text-2xl font-bold font-mono text-emerald-400">
             {formatNumber(overview.scheduledFollowUps)}
           </div>
           <div className="text-[11px] text-text-muted mt-0.5">Automated sequence triggers</div>
@@ -244,7 +243,7 @@ export const OutreachAnalyticsTab = ({ outreachData }) => {
       {realEngagementTracking.hasTrackingActivity && (
         <div className="bg-[#15191E] border border-white/[0.06] rounded-2xl p-4 flex items-center gap-6 shadow-card">
           <div className="flex items-center gap-2">
-            <Eye className="w-4 h-4 text-indigo-400" />
+            <Eye className="w-4 h-4 text-emerald-400" />
             <span className="text-xs text-text-secondary">Verified Opens:</span>
             <span className="text-xs font-bold text-text-primary font-mono">
               {realEngagementTracking.totalTrackedOpens}

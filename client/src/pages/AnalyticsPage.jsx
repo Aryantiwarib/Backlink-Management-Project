@@ -188,11 +188,11 @@ export const AnalyticsPage = () => {
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
                 active
-                  ? 'bg-gradient-to-r from-blue-600/15 via-indigo-600/15 to-purple-600/15 text-indigo-300 border border-indigo-500/30 shadow-sm'
+                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-sm'
                   : 'text-text-muted hover:text-text-primary hover:bg-white/[0.04] border border-transparent'
               }`}
             >
-              <Icon className={`w-3.5 h-3.5 ${active ? 'text-indigo-400' : 'text-text-muted'}`} />
+              <Icon className={`w-3.5 h-3.5 ${active ? 'text-emerald-400' : 'text-text-muted'}`} />
               <span>{tab.label}</span>
             </button>
           );
@@ -202,7 +202,7 @@ export const AnalyticsPage = () => {
       {/* Tab Content Display */}
       {loadingOverview && !overviewData ? (
         <div className="h-64 flex flex-col items-center justify-center text-text-muted bg-[#15191E] rounded-2xl border border-white/[0.06]">
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-400 mb-2" />
+          <Loader2 className="w-8 h-8 animate-spin text-emerald-400 mb-2" />
           <div className="text-xs">Computing real-time analytics...</div>
         </div>
       ) : overviewError ? (

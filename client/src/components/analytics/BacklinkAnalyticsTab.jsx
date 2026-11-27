@@ -76,7 +76,7 @@ export const BacklinkAnalyticsTab = ({ backlinkData }) => {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-sm font-bold text-text-primary flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-indigo-400" />
+                <TrendingUp className="w-4 h-4 text-emerald-400" />
                 Backlink Growth Over Time
               </h3>
               <p className="text-[11px] text-text-muted mt-0.5">
@@ -101,18 +101,18 @@ export const BacklinkAnalyticsTab = ({ backlinkData }) => {
                     type="monotone"
                     dataKey="totalBacklinks"
                     name="Total Backlinks"
-                    stroke="#3B82F6"
+                    stroke="#10B981"
                     strokeWidth={2.5}
-                    dot={{ r: 3, fill: '#3B82F6' }}
+                    dot={{ r: 3, fill: '#10B981' }}
                     activeDot={{ r: 5 }}
                   />
                   <Line
                     type="monotone"
                     dataKey="referringDomains"
                     name="Referring Domains"
-                    stroke="#10B981"
+                    stroke="#34D399"
                     strokeWidth={2}
-                    dot={{ r: 2.5, fill: '#10B981' }}
+                    dot={{ r: 2.5, fill: '#34D399' }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -179,7 +179,7 @@ export const BacklinkAnalyticsTab = ({ backlinkData }) => {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-sm font-bold text-text-primary flex items-center gap-2">
-                <PieIcon className="w-4 h-4 text-blue-400" />
+                <PieIcon className="w-4 h-4 text-emerald-400" />
                 Link Equity Distribution (Dofollow vs Nofollow)
               </h3>
               <p className="text-[11px] text-text-muted mt-0.5">
@@ -204,7 +204,10 @@ export const BacklinkAnalyticsTab = ({ backlinkData }) => {
                       paddingAngle={3}
                     >
                       {linkTypeDistribution.map((entry, index) => (
-                        <Cell key={`type-cell-${index}`} fill={entry.color} />
+                        <Cell
+                          key={`type-cell-${index}`}
+                          fill={entry.type === 'dofollow' ? '#10B981' : entry.type === 'nofollow' ? '#475569' : entry.color}
+                        />
                       ))}
                     </Pie>
                     <Tooltip content={<CustomTooltip />} />
@@ -213,18 +216,21 @@ export const BacklinkAnalyticsTab = ({ backlinkData }) => {
               </div>
 
               <div className="space-y-2.5 w-full sm:w-auto">
-                {linkTypeDistribution.map((entry) => (
-                  <div key={entry.name} className="flex items-center justify-between sm:justify-start gap-4 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
-                      <span className="text-text-secondary font-medium">{entry.name}</span>
+                {linkTypeDistribution.map((entry) => {
+                  const itemColor = entry.type === 'dofollow' ? '#10B981' : entry.type === 'nofollow' ? '#475569' : entry.color;
+                  return (
+                    <div key={entry.name} className="flex items-center justify-between sm:justify-start gap-4 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: itemColor }} />
+                        <span className="text-text-secondary font-medium">{entry.name}</span>
+                      </div>
+                      <div className="text-right sm:text-left">
+                        <span className="text-text-primary font-bold font-mono">{entry.percentage}%</span>
+                        <span className="text-text-muted text-[10px] font-mono ml-1.5">({entry.count})</span>
+                      </div>
                     </div>
-                    <div className="text-right sm:text-left">
-                      <span className="text-text-primary font-bold font-mono">{entry.percentage}%</span>
-                      <span className="text-text-muted text-[10px] font-mono ml-1.5">({entry.count})</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ) : (
@@ -239,7 +245,7 @@ export const BacklinkAnalyticsTab = ({ backlinkData }) => {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-sm font-bold text-text-primary flex items-center gap-2">
-                <Layers className="w-4 h-4 text-purple-400" />
+                <Layers className="w-4 h-4 text-emerald-400" />
                 Backlink Health Status
               </h3>
               <p className="text-[11px] text-text-muted mt-0.5">
@@ -302,7 +308,7 @@ export const BacklinkAnalyticsTab = ({ backlinkData }) => {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-sm font-bold text-text-primary flex items-center gap-2">
-                <Tag className="w-4 h-4 text-indigo-400" />
+                <Tag className="w-4 h-4 text-emerald-400" />
                 Top Anchor Text Distribution
               </h3>
               <p className="text-[11px] text-text-muted mt-0.5">
@@ -325,7 +331,7 @@ export const BacklinkAnalyticsTab = ({ backlinkData }) => {
                   </div>
                   <div className="w-full bg-[#101318] rounded-full h-1.5 overflow-hidden">
                     <div
-                      className="bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 h-full rounded-full transition-all duration-500"
+                      className="bg-gradient-to-r from-emerald-500 to-emerald-400 h-full rounded-full transition-all duration-500"
                       style={{ width: `${Math.min(100, item.percentage)}%` }}
                     />
                   </div>
@@ -344,7 +350,7 @@ export const BacklinkAnalyticsTab = ({ backlinkData }) => {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-sm font-bold text-text-primary flex items-center gap-2">
-                <Award className="w-4 h-4 text-purple-400" />
+                <Award className="w-4 h-4 text-emerald-400" />
                 Referring Domain Authority Tiers
               </h3>
               <p className="text-[11px] text-text-muted mt-0.5">
@@ -360,7 +366,7 @@ export const BacklinkAnalyticsTab = ({ backlinkData }) => {
                 <XAxis dataKey="tier" stroke="#6B7280" fontSize={10} angle={-15} textAnchor="end" />
                 <YAxis stroke="#6B7280" fontSize={11} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="count" name="Backlink Count" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="count" name="Backlink Count" fill="#10B981" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

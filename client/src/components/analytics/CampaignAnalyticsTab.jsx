@@ -4,29 +4,20 @@ import {
   PieChart,
   Pie,
   Cell,
-  Tooltip,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid
+  Tooltip
 } from 'recharts';
 import {
   Rocket,
   CheckCircle2,
-  PauseCircle,
-  Clock,
   Target,
-  ArrowUpRight,
-  TrendingUp,
-  AlertCircle
+  TrendingUp
 } from 'lucide-react';
 import { formatNumber } from '../../utils/formatters';
 
 const STATUS_COLORS = {
   active: '#10B981',
   paused: '#F59E0B',
-  completed: '#3B82F6',
+  completed: '#059669',
   draft: '#6B7280'
 };
 
@@ -77,7 +68,7 @@ export const CampaignAnalyticsTab = ({ campaignData }) => {
         <div className="bg-[#15191E] border border-white/[0.06] rounded-2xl p-5 shadow-card">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Total Campaigns</span>
-            <Rocket className="w-4 h-4 text-indigo-400" />
+            <Rocket className="w-4 h-4 text-emerald-400" />
           </div>
           <div className="text-2xl font-bold font-mono text-text-primary">{statusCounts.total}</div>
           <div className="text-[11px] text-text-muted mt-0.5">
@@ -101,7 +92,7 @@ export const CampaignAnalyticsTab = ({ campaignData }) => {
         <div className="bg-[#15191E] border border-white/[0.06] rounded-2xl p-5 shadow-card">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Assigned Prospects</span>
-            <Target className="w-4 h-4 text-purple-400" />
+            <Target className="w-4 h-4 text-emerald-400" />
           </div>
           <div className="text-2xl font-bold font-mono text-text-primary">
             {formatNumber(totals.totalAssignedProspects)}
@@ -114,14 +105,14 @@ export const CampaignAnalyticsTab = ({ campaignData }) => {
         <div className="bg-[#15191E] border border-white/[0.06] rounded-2xl p-5 shadow-card">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Overall Completion</span>
-            <TrendingUp className="w-4 h-4 text-blue-400" />
+            <TrendingUp className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="text-2xl font-bold font-mono text-blue-400">
+          <div className="text-2xl font-bold font-mono text-emerald-400">
             {totals.overallProgressPercentage}%
           </div>
           <div className="w-full bg-[#101318] rounded-full h-1.5 mt-2 overflow-hidden">
             <div
-              className="bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 h-full rounded-full transition-all duration-500"
+              className="bg-gradient-to-r from-emerald-500 to-emerald-400 h-full rounded-full transition-all duration-500"
               style={{ width: `${totals.overallProgressPercentage}%` }}
             />
           </div>
@@ -268,7 +259,9 @@ export const CampaignAnalyticsTab = ({ campaignData }) => {
                             ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                             : c.status === 'paused'
                             ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                            : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                            : c.status === 'completed'
+                            ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                            : 'bg-white/[0.05] text-text-muted border border-white/[0.08]'
                         }`}
                       >
                         {c.status}
@@ -280,7 +273,7 @@ export const CampaignAnalyticsTab = ({ campaignData }) => {
                     <td className="py-2.5 px-3 text-text-secondary font-mono">
                       {c.pipeline?.contacted || 0}
                     </td>
-                    <td className="py-2.5 px-3 text-indigo-300 font-mono">
+                    <td className="py-2.5 px-3 text-emerald-300 font-mono">
                       {c.pipeline?.in_discussion || 0}
                     </td>
                     <td className="py-2.5 px-3 text-emerald-400 font-mono font-bold">

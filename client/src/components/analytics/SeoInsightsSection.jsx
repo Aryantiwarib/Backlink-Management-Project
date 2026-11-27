@@ -22,18 +22,18 @@ const TYPE_CONFIG = {
   },
   success: {
     icon: ShieldCheck,
-    badgeBg: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-    borderColor: 'border-blue-500/25 hover:border-blue-500/40'
+    badgeBg: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    borderColor: 'border-emerald-500/25 hover:border-emerald-500/40'
   },
   recommendation: {
     icon: Lightbulb,
-    badgeBg: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-    borderColor: 'border-amber-500/25 hover:border-amber-500/40'
+    badgeBg: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    borderColor: 'border-emerald-500/25 hover:border-emerald-500/40'
   },
   action: {
     icon: Zap,
-    badgeBg: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-    borderColor: 'border-purple-500/25 hover:border-purple-500/40'
+    badgeBg: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    borderColor: 'border-emerald-500/25 hover:border-emerald-500/40'
   }
 };
 
@@ -65,7 +65,7 @@ export const SeoInsightsSection = ({ insightsData }) => {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-base font-bold text-text-primary flex items-center gap-2">
-            <Zap className="w-4 h-4 text-amber-400" />
+            <Zap className="w-4 h-4 text-emerald-400" />
             Deterministic SEO Performance Insights
           </h3>
           <p className="text-xs text-text-muted mt-0.5">
@@ -108,7 +108,7 @@ export const SeoInsightsSection = ({ insightsData }) => {
 
                 <div className="bg-[#101318] border border-white/[0.06] rounded-xl p-2.5 mb-3 flex items-center justify-between">
                   <span className="text-[11px] text-text-muted">Observed Metric:</span>
-                  <span className="text-xs font-bold font-mono text-indigo-300">{item.metric}</span>
+                  <span className="text-xs font-bold font-mono text-emerald-400">{item.metric}</span>
                 </div>
 
                 <p className="text-xs text-text-secondary leading-relaxed mb-3">
