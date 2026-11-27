@@ -19,6 +19,7 @@ import { CampaignDetailsPage } from './pages/CampaignDetailsPage';
 import { OutreachEmailPage } from './pages/OutreachEmailPage';
 import { SeoToolsPage } from './pages/SeoToolsPage';
 import { AiAssistantPage } from './pages/AiAssistantPage';
+import { AnalyticsPage } from './pages/AnalyticsPage';
 import { ComingSoonPage } from './pages/ComingSoonPage';
 import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
@@ -56,6 +57,8 @@ function App() {
                       <Route path="seo-tools" element={<SeoToolsPage />} />
                       <Route path="assistant" element={<AiAssistantPage />} />
                       <Route path="ai-assistant" element={<AiAssistantPage />} />
+                      <Route path="analytics" element={<AnalyticsPage />} />
+                      <Route path="reports" element={<AnalyticsPage />} />
                       <Route path="settings" element={<ComingSoonPage />} />
                     </Route>
                   </Route>

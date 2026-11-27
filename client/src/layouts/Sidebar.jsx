@@ -20,7 +20,8 @@ import {
   X,
   Plus,
   Rocket,
-  Mail
+  Mail,
+  BarChart3
 } from 'lucide-react';
 import { useDashboard } from '../context/DashboardContext';
 import { useAuth } from '../context/AuthContext';
@@ -88,6 +89,7 @@ export const Sidebar = () => {
     {
       group: 'ANALYTICS',
       items: [
+        { label: 'Reports & Analytics', path: '/analytics', icon: BarChart3 },
         { label: 'Backlink Monitoring', path: '/monitoring', icon: ShieldCheck },
         { label: 'SEO Tools', path: '/seo-tools', icon: Wrench, badge: 'Live API' }
       ]
