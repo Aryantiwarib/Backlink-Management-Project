@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import { SUPPORTED_PLACEHOLDERS } from './placeholderConstants';
 import { outreachApi } from '../../api/outreachService';
-import { AiEmailStudioModal } from './AiEmailStudioModal';
 
 export const EmailComposerModal = ({
   isOpen,
@@ -34,7 +33,6 @@ export const EmailComposerModal = ({
   const [subject, setSubject] = useState(initialSubject || '');
   const [body, setBody] = useState(initialBody || '');
   const [senderName, setSenderName] = useState('');
-  const [aiStudioOpen, setAiStudioOpen] = useState(false);
 
   // Account state management (normalizes nested { connected, account } vs flat account object)
   const [accountStatusState, setAccountStatusState] = useState(connectedAccount || null);
@@ -368,18 +366,9 @@ export const EmailComposerModal = ({
           <div className="flex-1 p-6 overflow-y-auto bg-[#15191E] flex flex-col justify-between">
             {viewMode === 'compose' ? (
               <form onSubmit={handleConfirmSend} className="space-y-4">
-                {/* AI Draft Quick Launcher & Content Header */}
+                {/* Content Header */}
                 <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
                   <span className="text-xs font-bold text-text-secondary">Email Content</span>
-                  <button
-                    type="button"
-                    onClick={() => setAiStudioOpen(true)}
-                    className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-semibold shadow-glow-brand transition-all"
-                    title="Generate or refine cold outreach email with AI"
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>Draft with AI Studio</span>
-                  </button>
                 </div>
 
                 {/* Template selector & Sender Name */}
@@ -583,21 +572,6 @@ export const EmailComposerModal = ({
           </div>
         </div>
       </div>
-
-      {/* Embedded AI Email Studio Modal */}
-      {aiStudioOpen && (
-        <AiEmailStudioModal
-          isOpen={aiStudioOpen}
-          onClose={() => setAiStudioOpen(false)}
-          initialCampaign={campaign}
-          campaigns={campaign ? [campaign] : []}
-          onApplyDraft={({ subject: newSub, body: newBody }) => {
-            setSubject(newSub);
-            setBody(newBody);
-            setAiStudioOpen(false);
-          }}
-        />
-      )}
     </div>
   );
 };

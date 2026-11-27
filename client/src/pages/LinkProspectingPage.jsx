@@ -23,7 +23,7 @@ import { DiscoveredProspectsTable } from '../components/prospecting/DiscoveredPr
 import { SavedProspectsTable } from '../components/prospecting/SavedProspectsTable';
 import { ProspectDetailModal } from '../components/prospecting/ProspectDetailModal';
 import { ProviderSetupGuideModal } from '../components/prospecting/ProviderSetupGuideModal';
-import { AiEmailStudioModal } from '../components/outreach/AiEmailStudioModal';
+import { GenerateMailModal } from '../components/outreach/GenerateMailModal';
 
 export const LinkProspectingPage = () => {
   const { activeWebsite, websites, loading: websitesLoading } = useWebsite();
@@ -51,8 +51,8 @@ export const LinkProspectingPage = () => {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedProspect, setSelectedProspect] = useState(null);
   const [setupGuideOpen, setSetupGuideOpen] = useState(false);
-  const [aiStudioOpen, setAiStudioOpen] = useState(false);
-  const [aiStudioProspect, setAiStudioProspect] = useState(null);
+  const [mailModalOpen, setMailModalOpen] = useState(false);
+  const [mailProspect, setMailProspect] = useState(null);
 
   // React Query: Prospect Stats (cached across navigations)
   const {
@@ -241,8 +241,8 @@ export const LinkProspectingPage = () => {
   };
 
   const handleDraftEmail = (prospect) => {
-    setAiStudioProspect(prospect);
-    setAiStudioOpen(true);
+    setMailProspect(prospect);
+    setMailModalOpen(true);
   };
 
   // Handle modal update
@@ -472,18 +472,16 @@ export const LinkProspectingPage = () => {
         onClose={() => setSetupGuideOpen(false)}
       />
 
-      {/* AI Outreach Email Studio Modal */}
-      {aiStudioOpen && (
-        <AiEmailStudioModal
-          isOpen={aiStudioOpen}
+      {/* Bulk / Individual Outreach Email Generator Modal */}
+      {mailModalOpen && (
+        <GenerateMailModal
+          isOpen={mailModalOpen}
           onClose={() => {
-            setAiStudioOpen(false);
-            setAiStudioProspect(null);
+            setMailModalOpen(false);
+            setMailProspect(null);
           }}
-          initialProspect={aiStudioProspect}
-          initialRecipientWebsite={aiStudioProspect?.prospectDomain}
-          initialRecipientName={aiStudioProspect?.contactEmails?.[0]?.name || ''}
-          initialRecipientEmail={aiStudioProspect?.contactEmail || aiStudioProspect?.contactEmails?.[0]?.email || ''}
+          selectedProspects={mailProspect ? [mailProspect] : []}
+          websiteId={siteId}
         />
       )}
     </div>

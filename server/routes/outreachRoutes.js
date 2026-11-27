@@ -19,6 +19,13 @@ import {
   trackOpen,
   trackClick
 } from '../controllers/outreachController.js';
+import {
+  generateTemplate,
+  modifyTemplate,
+  previewBatch,
+  sendBulk,
+  retrySingle
+} from '../controllers/bulkEmailController.js';
 import { ensureAuthenticated } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -37,6 +44,13 @@ router.get('/connect/google/callback', handleGoogleCallback);
 // =============================================================================
 // PROTECTED OUTREACH ENDPOINTS (Requires logged in user session)
 // =============================================================================
+
+// Bulk Email Automation & Generation Endpoints
+router.post('/bulk/template/generate', ensureAuthenticated, generateTemplate);
+router.post('/bulk/template/modify', ensureAuthenticated, modifyTemplate);
+router.post('/bulk/preview', ensureAuthenticated, previewBatch);
+router.post('/bulk/send', ensureAuthenticated, sendBulk);
+router.post('/bulk/retry', ensureAuthenticated, retrySingle);
 
 // Gmail Account Connection & Status
 router.get('/account', ensureAuthenticated, getAccountStatus);

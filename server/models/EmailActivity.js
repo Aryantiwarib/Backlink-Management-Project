@@ -28,7 +28,8 @@ const emailActivitySchema = new mongoose.Schema(
     campaignId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Campaign',
-      required: [true, 'Campaign ID is required'],
+      required: false,
+      default: null,
       index: true
     },
     prospectId: {

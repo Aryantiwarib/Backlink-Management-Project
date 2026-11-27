@@ -16,6 +16,8 @@ import {
   Check,
   Sparkles
 } from 'lucide-react';
+import { FloatingGenerateMailButton } from '../outreach/FloatingGenerateMailButton';
+import { GenerateMailModal } from '../outreach/GenerateMailModal';
 
 export const SavedProspectsTable = ({
   prospects = [],
@@ -35,6 +37,8 @@ export const SavedProspectsTable = ({
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [generateMailOpen, setGenerateMailOpen] = useState(false);
+  const [modalProspects, setModalProspects] = useState([]);
 
   const toggleSelect = (id) => {
     setSelectedIds((prev) => {
@@ -211,6 +215,20 @@ export const SavedProspectsTable = ({
             </span>
 
             <div className="flex items-center gap-2">
+              {/* Generate Mail button */}
+              <button
+                type="button"
+                onClick={() => {
+                  const selected = prospects.filter((p) => selectedIds.has(p.id || p._id));
+                  setModalProspects(selected);
+                  setGenerateMailOpen(true);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition-colors shadow-md shadow-emerald-500/20 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Generate Mail ({selectedIds.size})</span>
+              </button>
+
               {/* Change status menu */}
               <div className="relative">
                 <button
@@ -422,7 +440,7 @@ export const SavedProspectsTable = ({
                             type="button"
                             onClick={() => onDraftEmail(prospect)}
                             className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 text-[11px] font-medium transition-colors"
-                            title="Draft outreach email with AI Studio"
+                            title="Generate personalized outreach email"
                           >
                             <Sparkles className="w-3 h-3" />
                             <span>Pitch</span>
@@ -476,6 +494,31 @@ export const SavedProspectsTable = ({
             </button>
           </div>
         </div>
+      )}
+      {/* Floating Action Button when 1+ prospects are selected */}
+      <FloatingGenerateMailButton
+        selectedCount={selectedIds.size}
+        onClick={() => {
+          const selected = prospects.filter((p) => selectedIds.has(p.id || p._id));
+          setModalProspects(selected);
+          setGenerateMailOpen(true);
+        }}
+      />
+
+      {/* Generate Mail Modal */}
+      {generateMailOpen && (
+        <GenerateMailModal
+          isOpen={generateMailOpen}
+          onClose={() => {
+            setGenerateMailOpen(false);
+            setModalProspects([]);
+          }}
+          selectedProspects={
+            modalProspects.length > 0
+              ? modalProspects
+              : prospects.filter((p) => selectedIds.has(p.id || p._id))
+          }
+        />
       )}
     </div>
   );

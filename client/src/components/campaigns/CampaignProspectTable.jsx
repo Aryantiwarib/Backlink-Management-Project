@@ -12,8 +12,11 @@ import {
   Mail,
   AlertCircle,
   Plus,
-  Send
+  Send,
+  Sparkles
 } from 'lucide-react';
+import { FloatingGenerateMailButton } from '../outreach/FloatingGenerateMailButton';
+import { GenerateMailModal } from '../outreach/GenerateMailModal';
 
 const OUTREACH_OPTIONS = [
   { id: 'uncontacted', label: 'Uncontacted' },
@@ -40,6 +43,7 @@ export const CampaignProspectTable = ({
   onEditCriteria
 }) => {
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [generateMailOpen, setGenerateMailOpen] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState(null);
   const [editNotes, setEditNotes] = useState('');
   const [editProspectNotes, setEditProspectNotes] = useState('');
@@ -209,6 +213,15 @@ export const CampaignProspectTable = ({
           </span>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setGenerateMailOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Generate Mail ({selectedIds.size})</span>
+            </button>
+
             {onSendOutreach && (
               <button
                 type="button"
@@ -537,6 +550,22 @@ export const CampaignProspectTable = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Floating Action Button when 1+ prospects are selected */}
+      <FloatingGenerateMailButton
+        selectedCount={selectedIds.size}
+        onClick={() => setGenerateMailOpen(true)}
+      />
+
+      {/* Generate Mail Modal */}
+      {generateMailOpen && (
+        <GenerateMailModal
+          isOpen={generateMailOpen}
+          onClose={() => setGenerateMailOpen(false)}
+          selectedProspects={assignments.filter((a) => selectedIds.has(getAssignmentId(a)))}
+          campaignId={assignments[0]?.campaignId || null}
+        />
       )}
     </div>
   );
