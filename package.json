@@ -3,12 +3,16 @@
   "version": "1.0.0",
   "description": "LINKORA - Premium SEO & Backlink Management Automation Platform",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "npm run dev --prefix server",
     "client": "npm run dev --prefix client",
     "start": "npm run start --prefix server",
     "build": "npm run build --prefix client",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "npm run test:unit && npm run test:integration",
     "test:unit": "npm run test:unit --prefix server",
     "test:integration": "npm run test:integration --prefix server",
@@ -20,7 +24,9 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.65.1",
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "eslint": "^10.15.0",
+    "prettier": "^3.10.1"
   },
   "keywords": [
     "seo",
