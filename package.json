@@ -9,9 +9,17 @@
     "client": "npm run dev --prefix client",
     "start": "npm run start --prefix server",
     "build": "npm run build --prefix client",
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "npm run test:unit --prefix server",
+    "test:integration": "npm run test:integration --prefix server",
+    "test:e2e": "playwright test",
     "install:all": "npm install && npm install --prefix server && npm install --prefix client"
   },
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "concurrently": "^9.1.2"
   },
   "keywords": [
