@@ -24,7 +24,7 @@ jobs:
       url: ${{ vars.PRODUCTION_CLIENT_URL }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Trigger Production Deployment
         env:
