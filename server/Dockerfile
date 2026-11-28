@@ -3,7 +3,7 @@
 # -----------------------------------------------------------------------------
 # Stage 1: Install Production Dependencies
 # -----------------------------------------------------------------------------
-FROM node:20-alpine AS deps
+FROM node:26-alpine AS deps
 
 WORKDIR /app
 
@@ -19,7 +19,7 @@ RUN npm ci --omit=dev
 # -----------------------------------------------------------------------------
 # Stage 2: Production Application Runtime
 # -----------------------------------------------------------------------------
-FROM node:20-alpine AS runner
+FROM node:26-alpine AS runner
 
 WORKDIR /app
 
