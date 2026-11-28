@@ -22,7 +22,7 @@ jobs:
       url: ${{ vars.STAGING_CLIENT_URL }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Trigger Staging Deployment
         env:
@@ -48,7 +48,7 @@ jobs:
       name: staging
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js 20.x
         uses: actions/setup-node@v4
